@@ -1,0 +1,27 @@
+{
+  "name": "scheduling-project",
+  "version": "1.0.0",
+  "description": "",
+  "homepage": "https://github.com/seal-team-5/scheduling-project#readme",
+  "bugs": {
+    "url": "https://github.com/seal-team-5/scheduling-project/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/seal-team-5/scheduling-project.git"
+  },
+  "license": "ISC",
+  "author": "",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "format": "npx prettier . --write",
+    "lint": "npx eslint ."
+  },
+  "dependencies": {
+    "eslint": "^10.11.0",
+    "eslint-config-google": "^0.14.0",
+    "prettier": "^3.9.8"
+  }
+}
