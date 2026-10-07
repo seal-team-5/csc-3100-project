@@ -1,20 +1,19 @@
 import mongoose, { Schema } from 'mongoose';
 
-export type Canine = {
-  Image: string;
-  Name: string;
-  Breed: string;
-  Age: 'Baby' | 'Young' | 'Adult' | 'Senior';
-  Sex: 'Male' | 'Female';
-  Neutered: boolean;
-  Immunization: string;
-  Size: string;
-  Weight: number;
-  Details: string[];
-  Story: string;
+export type Filter = {
+  name: string;
+  type: string;
 };
 
-const canineSchema = new Schema<Canine>(
+export type Recipe = {
+  Image: string;
+  Name: string;
+  Ingredients: string[];
+  Instructions: string[];
+  Filters: Filter[];
+};
+
+const recipeSchema = new Schema<Recipe>(
   {
     Image: {
       type: String,
@@ -26,53 +25,23 @@ const canineSchema = new Schema<Canine>(
       required: true,
       trim: true,
     },
-    Breed: {
-      type: String,
+    Ingredients: {
+      type: [String],
       required: true,
       trim: true,
     },
-    Age: {
-      type: String,
-      required: true,
-      trim: true,
-      enum: ['Baby', 'Young', 'Adult', 'Senior'],
-    },
-    Sex: {
-      type: String,
-      required: true,
-      trim: true,
-      enum: ['Male', 'Female'],
-    },
-    Neutered: {
-      type: Boolean,
-      required: true,
-    },
-    Immunization: {
-      type: String,
+    Instructions: {
+      type: [String],
       required: true,
       trim: true,
     },
-    Size: {
-      type: String,
+    Filters: {
+      type: [{ name: String, type: String }],
       required: true,
-      trim: true,
-    },
-    Weight: {
-      type: Number,
-      required: true,
-    },
-    Details: {
-      type: [{ type: String, trim: true }],
-      required: true,
-    },
-    Story: {
-      type: String,
-      required: true,
-      trim: true,
     },
   },
-  { collection: 'canines' }
+  { collection: 'recipes' }
 );
 
-export default mongoose.models.Canine ||
-  mongoose.model<Canine>('Canine', canineSchema);
+export default mongoose.models.Recipe ||
+  mongoose.model<Recipe>('Recipe', recipeSchema);
