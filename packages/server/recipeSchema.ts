@@ -1,5 +1,10 @@
 import mongoose, { Schema } from 'mongoose';
 
+/*
+  Fetch via:
+  const response = await fetch("/api/users");
+*/
+
 export type Filter = {
   name: string;
   type: string;
