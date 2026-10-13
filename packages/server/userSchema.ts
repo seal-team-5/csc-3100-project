@@ -1,5 +1,10 @@
 import mongoose, { Schema } from 'mongoose';
 
+/*
+  Fetch via:
+  const response = await fetch("/api/user");
+*/
+
 export type User = {
   username: string;
   email: string;

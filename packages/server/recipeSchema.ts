@@ -1,5 +1,10 @@
 import mongoose, { Schema } from 'mongoose';
 
+/*
+  Fetch via:
+  const response = await fetch("/api/users");
+*/
+
 export type Filter = {
   name: string;
   type: string;
@@ -36,7 +41,7 @@ const recipeSchema = new Schema<Recipe>(
       trim: true,
     },
     Filters: {
-      type: [{ name: String, type: String }],
+      type: [{ name: String, type: { type: String } }],
       required: true,
     },
   },
