@@ -41,7 +41,7 @@ const recipeSchema = new Schema<Recipe>(
       trim: true,
     },
     Filters: {
-      type: [{ name: String, type: String }],
+      type: [{ name: String, type: { type: String } }],
       required: true,
     },
   },
