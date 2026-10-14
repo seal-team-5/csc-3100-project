@@ -1,19 +1,11 @@
 import mongoose from 'mongoose';
 
-const url: string = process.env.MONGO_URI as string;
-let connection: typeof mongoose;
-
-/**
- * Makes a connection to a MongoDB database. If a connection already exists, does nothing
- * Call this function before all api routes
- * @returns {Promise<typeof mongoose>}
- */
-
+/** Reuse the active connection. Mongoose also handles concurrent connections. */
 const connectDB = async () => {
-  if (!connection) {
-    connection = await mongoose.connect(url);
-    return connection;
-  }
+  if (mongoose.connection.readyState === 1) return mongoose;
+  const url = process.env.MONGO_URI;
+  if (!url) throw new Error('MONGO_URI is required.');
+  return mongoose.connect(url);
 };
 
 export default connectDB;
