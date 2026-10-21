@@ -1,8 +1,16 @@
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
-import "./App.css";
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import './App.css';
+import Settings from './Settings';
 
 function App() {
-  const pages = ["Home", "Recipes", "History", "Favorites", "Login"];
+  const pages = [
+    'Home',
+    'Recipes',
+    'History',
+    'Favorites',
+    'Settings',
+    'Login',
+  ];
 
   return (
     <BrowserRouter>
@@ -13,7 +21,7 @@ function App() {
           {pages.map((page) => (
             <Link
               key={page}
-              to={page === "Home" ? "/" : `/${page.toLowerCase()}`}
+              to={page === 'Home' ? '/' : `/${page.toLowerCase()}`}
             >
               {page}
             </Link>
@@ -27,6 +35,7 @@ function App() {
           <Route path="/recipes" element={<h1>Recipes</h1>} />
           <Route path="/history" element={<h1>History</h1>} />
           <Route path="/favorites" element={<h1>Favorites</h1>} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/login" element={<h1>Login</h1>} />
         </Routes>
       </main>
