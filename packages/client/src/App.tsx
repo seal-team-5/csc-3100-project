@@ -9,6 +9,7 @@ import {
 } from 'react-router-dom';
 import Login from './pages/Login';
 import './App.css';
+import RecipeReview from './pages/RecipeReview';
 
 type CurrentUser = { id: string; username: string; email: string };
 
@@ -40,6 +41,7 @@ function Home() {
   return (
     <>
       <h1>Home</h1>
+      <RecipeReview /> {/*temporary review button till we get a recipe card*/}
       {user && (
         <>
           <p>Welcome, {user.username}.</p>
