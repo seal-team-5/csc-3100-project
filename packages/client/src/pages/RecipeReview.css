@@ -1,0 +1,12 @@
+.review-form {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  max-width: 360px;
+}
+
+.review-form input,
+.review-form textarea {
+  width: 100%;
+}
