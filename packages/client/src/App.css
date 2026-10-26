@@ -138,4 +138,6 @@ button:disabled {
 
 .recipe-content .primary-button {
   margin-top: 16px;
+.app-content {
+  padding: 30px;
 }

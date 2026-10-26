@@ -325,11 +325,52 @@ function Home() {
 function App() {
   const pages = ['Home', 'Recipes', 'History', 'Favorites', 'Login'];
 
+function Home() {
+  const navigate = useNavigate();
+  const [user, setUser] = useState<CurrentUser | null>(null);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/auth/me', { signal: controller.signal })
+      .then(async (response) => {
+        if (response.ok) setUser((await response.json()).user);
+      })
+      .catch(() => {
+        /* Guests can still view the home page. */
+      });
+    return () => controller.abort();
+  }, []);
+  async function logout() {
+    try {
+      const response = await fetch('/api/auth/logout', { method: 'POST' });
+      if (!response.ok) throw new Error('Logout failed');
+      setUser(null);
+      navigate('/login', { replace: true });
+    } catch {
+      setError('Unable to sign out. Please try again.');
+    }
+  }
   return (
-    <BrowserRouter>
+    <>
+      <h1>Home</h1>
+      <RecipeReview /> {/*temporary review button till we get a recipe card*/}
+      {user && (
+        <>
+          <p>Welcome, {user.username}.</p>
+          <button onClick={logout}>Sign out</button>
+        </>
+      )}
+      {error && <p role="alert">{error}</p>}
+    </>
+  );
+}
+
+function Layout() {
+  const pages = ['Home', 'Recipes', 'History', 'Favorites', 'Login'];
+  return (
+    <>
       <nav className="navbar">
         <h2>RecipeMe</h2>
-
         <div className="nav-links">
           {pages.map((page) => (
             <Link
@@ -341,6 +382,12 @@ function App() {
           ))}
         </div>
       </nav>
+      <main className="app-content">
+        <Outlet />
+      </main>
+    </>
+  );
+}
 
       <main>
         <Routes>
@@ -348,9 +395,8 @@ function App() {
           <Route path="/recipes" element={<h1>Recipes</h1>} />
           <Route path="/history" element={<h1>History</h1>} />
           <Route path="/favorites" element={<h1>Favorites</h1>} />
-          <Route path="/login" element={<h1>Login</h1>} />
-        </Routes>
-      </main>
+        </Route>
+      </Routes>
     </BrowserRouter>
   );
 }
