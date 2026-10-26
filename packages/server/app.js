@@ -13,8 +13,27 @@ const dummyHash = await bcrypt.hash(
 );
 
 export function createApp(options) {
-  const { User, production = false } = options;
+  const { User, Recipe, production = false } = options;
   const { app, loginLimiter, registerLimiter } = configureServer(options);
+
+  app.get('/api/recipes', async (_req, res) => {
+    try {
+      const documents = await Recipe.find({}).lean();
+      const recipes = documents.map((recipe) => ({
+        image: recipe.Image,
+        name: recipe.Name,
+        ingredients: recipe.Ingredients,
+        instructions: recipe.Instructions,
+        filters: recipe.Filters.map(({ name, type }) => ({ name, type })),
+      }));
+      return res.json({ recipes });
+    } catch (error) {
+      console.error('Recipe query failed:', error.name);
+      return res.status(503).json({
+        error: 'Unable to load recipes from the database. Please try again.',
+      });
+    }
+  });
 
   // 1. Register: validate input, hash the password, then save the user.
   app.post('/api/auth/register', registerLimiter, async (req, res) => {

@@ -15,7 +15,11 @@
   "type": "module",
   "main": "index.js",
   "scripts": {
+    "dev:server": "npm run dev",
+    "dev:client": "npm --prefix packages/client run dev",
+    "build": "npm --prefix packages/client run build",
     "test": "node --test packages/server/*.test.js",
+    "test:recipes": "node --env-file=.env --test packages/server/integration/recipes.test.js",
     "format": "npx prettier . --write",
     "lint": "npx eslint .",
     "start": "node --env-file=.env packages/server/index.js",
