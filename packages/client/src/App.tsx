@@ -1,6 +1,6 @@
-import { useState } from "react";
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
-import "./App.css";
+import { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
+import './App.css';
 
 type RecipeFilter = {
   name: string;
@@ -21,143 +21,20 @@ type RecipeResult = {
   changedFilters: RecipeFilter[];
 };
 
-const recipes: Recipe[] = [
-  {
-    image: "https://www.themealdb.com/images/media/meals/wvpsxx1468256321.jpg",
-    name: "Teriyaki Chicken Rice Bowl",
-    ingredients: [
-      "chicken thighs",
-      "teriyaki sauce",
-      "brown rice",
-      "broccoli",
-      "carrots",
-    ],
-    instructions: [
-      "Bake the chicken with teriyaki sauce until cooked through.",
-      "Steam the broccoli and carrots while the rice warms.",
-      "Slice the chicken and serve everything together with extra sauce.",
-    ],
-    filters: [
-      { name: "Japanese", type: "Cuisine" },
-      { name: "Chicken", type: "Protein" },
-      { name: "Dinner", type: "Meal" },
-      { name: "Balanced", type: "Goal" },
-    ],
-  },
-  {
-    image: "https://www.themealdb.com/images/media/meals/ustsqw1468250014.jpg",
-    name: "Vegetable Pasta Bake",
-    ingredients: [
-      "penne pasta",
-      "tomato sauce",
-      "zucchini",
-      "bell pepper",
-      "mozzarella",
-    ],
-    instructions: [
-      "Boil the pasta until just tender.",
-      "Mix the pasta with tomato sauce, vegetables, and cheese.",
-      "Bake until the top is bubbling and golden.",
-    ],
-    filters: [
-      { name: "Italian", type: "Cuisine" },
-      { name: "Vegetarian", type: "Diet" },
-      { name: "Dinner", type: "Meal" },
-      { name: "Comfort", type: "Goal" },
-    ],
-  },
-  {
-    image: "https://www.themealdb.com/images/media/meals/1549542877.jpg",
-    name: "Beef Taco Bowls",
-    ingredients: [
-      "ground beef",
-      "rice",
-      "black beans",
-      "corn",
-      "salsa",
-      "avocado",
-    ],
-    instructions: [
-      "Brown the beef with taco seasoning.",
-      "Layer rice, beans, corn, beef, and salsa in bowls.",
-      "Top with avocado before serving.",
-    ],
-    filters: [
-      { name: "Mexican", type: "Cuisine" },
-      { name: "Beef", type: "Protein" },
-      { name: "Dinner", type: "Meal" },
-      { name: "Quick", type: "Time" },
-    ],
-  },
-  {
-    image: "https://www.themealdb.com/images/media/meals/ytpstt1511814614.jpg",
-    name: "Chickpea Curry",
-    ingredients: [
-      "chickpeas",
-      "coconut milk",
-      "curry powder",
-      "tomatoes",
-      "spinach",
-      "rice",
-    ],
-    instructions: [
-      "Simmer chickpeas, tomatoes, coconut milk, and spices.",
-      "Fold in spinach until wilted.",
-      "Serve over rice.",
-    ],
-    filters: [
-      { name: "Indian", type: "Cuisine" },
-      { name: "Vegetarian", type: "Diet" },
-      { name: "Dinner", type: "Meal" },
-      { name: "One Pot", type: "Time" },
-    ],
-  },
-  {
-    image: "https://www.themealdb.com/images/media/meals/1520084413.jpg",
-    name: "Berry Yogurt Parfait",
-    ingredients: ["greek yogurt", "berries", "granola", "honey"],
-    instructions: [
-      "Layer yogurt, berries, and granola in a glass.",
-      "Drizzle with honey and serve chilled.",
-    ],
-    filters: [
-      { name: "American", type: "Cuisine" },
-      { name: "Vegetarian", type: "Diet" },
-      { name: "Breakfast", type: "Meal" },
-      { name: "Quick", type: "Time" },
-    ],
-  },
-  {
-    image: "https://www.themealdb.com/images/media/meals/sytuqu1511553755.jpg",
-    name: "Salmon Rice Plate",
-    ingredients: ["salmon", "rice", "cucumber", "soy sauce", "sesame seeds"],
-    instructions: [
-      "Roast salmon until flaky.",
-      "Serve over rice with cucumber and sesame seeds.",
-      "Finish with soy sauce.",
-    ],
-    filters: [
-      { name: "Japanese", type: "Cuisine" },
-      { name: "Seafood", type: "Protein" },
-      { name: "Dinner", type: "Meal" },
-      { name: "Balanced", type: "Goal" },
-    ],
-  },
-];
+function getFilterGroups(recipes: Recipe[]) {
+  const groups = recipes.reduce<Record<string, string[]>>((groups, recipe) => {
+    recipe.filters.forEach((filter) => {
+      groups[filter.type] = groups[filter.type] || [];
+      if (!groups[filter.type].includes(filter.name)) {
+        groups[filter.type].push(filter.name);
+      }
+    });
+    return groups;
+  }, {});
 
-const filterGroups = recipes.reduce<Record<string, string[]>>((groups, recipe) => {
-  recipe.filters.forEach((filter) => {
-    groups[filter.type] = groups[filter.type] || [];
-
-    if (!groups[filter.type].includes(filter.name)) {
-      groups[filter.type].push(filter.name);
-    }
-  });
-
+  Object.values(groups).forEach((filters) => filters.sort());
   return groups;
-}, {});
-
-Object.values(filterGroups).forEach((filters) => filters.sort());
+}
 
 const randomFrom = <T,>(items: T[]) =>
   items[Math.floor(Math.random() * items.length)];
@@ -169,7 +46,12 @@ function filterMatches(recipe: Recipe, selectedFilter: RecipeFilter) {
   );
 }
 
-function getRecipeResult(selectedFilters: RecipeFilter[]): RecipeResult {
+function getRecipeResult(
+  recipes: Recipe[],
+  selectedFilters: RecipeFilter[]
+): RecipeResult | null {
+  if (recipes.length === 0) return null;
+
   if (selectedFilters.length === 0) {
     return {
       recipe: randomFrom(recipes),
@@ -204,7 +86,8 @@ function getRecipeResult(selectedFilters: RecipeFilter[]): RecipeResult {
     (result) =>
       result.changedFilters.length >= 1 && result.changedFilters.length <= 2
   );
-  const fallbackPool = oneOrTwoChanged.length > 0 ? oneOrTwoChanged : rankedRecipes;
+  const fallbackPool =
+    oneOrTwoChanged.length > 0 ? oneOrTwoChanged : rankedRecipes;
   const closestChangeCount = fallbackPool[0].changedFilters.length;
   const closestRecipes = fallbackPool.filter(
     (result) => result.changedFilters.length === closestChangeCount
@@ -214,6 +97,42 @@ function getRecipeResult(selectedFilters: RecipeFilter[]): RecipeResult {
 }
 
 function Home() {
+  const [recipes, setRecipes] = useState<Recipe[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [reload, setReload] = useState(0);
+  const filterGroups = getFilterGroups(recipes);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadRecipes() {
+      setLoading(true);
+      setError(null);
+      try {
+        const response = await fetch('/api/recipes', {
+          signal: controller.signal,
+          cache: 'no-store',
+        });
+        if (!response.ok) {
+          throw new Error('Unable to load recipes. Please try again.');
+        }
+        const data: { recipes: Recipe[] } = await response.json();
+        if (!controller.signal.aborted) setRecipes(data.recipes);
+      } catch {
+        if (!controller.signal.aborted) {
+          setRecipes([]);
+          setError('Unable to load recipes. Please try again.');
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }
+
+    void loadRecipes();
+    return () => controller.abort();
+  }, [reload]);
+
   const [selectedFilters, setSelectedFilters] = useState<RecipeFilter[]>([]);
   const [recipeResult, setRecipeResult] = useState<RecipeResult | null>(null);
 
@@ -236,7 +155,7 @@ function Home() {
   };
 
   const showRecipe = () => {
-    setRecipeResult(getRecipeResult(selectedFilters));
+    setRecipeResult(getRecipeResult(recipes, selectedFilters));
   };
 
   return (
@@ -266,6 +185,23 @@ function Home() {
           </button>
         </div>
 
+        {loading && <p role="status">Loading recipes…</p>}
+        {error && (
+          <div role="alert">
+            <p>{error}</p>
+            <button
+              className="secondary-button"
+              onClick={() => setReload((value) => value + 1)}
+              type="button"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+        {!loading && !error && recipes.length === 0 && (
+          <p role="status">No recipes are available yet.</p>
+        )}
+
         <div className="filter-groups">
           {Object.entries(filterGroups).map(([type, filters]) => (
             <fieldset className="filter-group" key={type}>
@@ -278,7 +214,7 @@ function Home() {
 
                   return (
                     <label
-                      className={`filter-pill ${isSelected ? "selected" : ""}`}
+                      className={`filter-pill ${isSelected ? 'selected' : ''}`}
                       key={`${type}-${name}`}
                     >
                       <input
@@ -295,7 +231,12 @@ function Home() {
           ))}
         </div>
 
-        <button className="primary-button" onClick={showRecipe} type="button">
+        <button
+          className="primary-button"
+          disabled={loading || !!error || recipes.length === 0}
+          onClick={showRecipe}
+          type="button"
+        >
           Show me a recipe
         </button>
       </section>
@@ -322,23 +263,23 @@ function Home() {
             <div className="recipe-content">
               <p className="match-note">
                 {recipeResult.exactMatch
-                  ? "Matches your filters"
+                  ? 'Matches your filters'
                   : `Closest match with ${
                       recipeResult.changedFilters.length
                     } changed ${
                       recipeResult.changedFilters.length === 1
-                        ? "filter"
-                        : "filters"
+                        ? 'filter'
+                        : 'filters'
                     }`}
               </p>
               <h2 id="recipe-title">{recipeResult.recipe.name}</h2>
 
               {!recipeResult.exactMatch && (
                 <p className="similar-note">
-                  No recipe matched everything, so this suggestion changes{" "}
+                  No recipe matched everything, so this suggestion changes{' '}
                   {recipeResult.changedFilters
                     .map((filter) => `${filter.type}: ${filter.name}`)
-                    .join(", ")}
+                    .join(', ')}
                   .
                 </p>
               )}
@@ -365,7 +306,12 @@ function Home() {
                 ))}
               </ol>
 
-              <button className="primary-button" onClick={showRecipe} type="button">
+              <button
+                className="primary-button"
+                disabled={loading || !!error || recipes.length === 0}
+                onClick={showRecipe}
+                type="button"
+              >
                 Regenerate
               </button>
             </div>
@@ -377,7 +323,7 @@ function Home() {
 }
 
 function App() {
-  const pages = ["Home", "Recipes", "History", "Favorites", "Login"];
+  const pages = ['Home', 'Recipes', 'History', 'Favorites', 'Login'];
 
   return (
     <BrowserRouter>
@@ -388,7 +334,7 @@ function App() {
           {pages.map((page) => (
             <Link
               key={page}
-              to={page === "Home" ? "/" : `/${page.toLowerCase()}`}
+              to={page === 'Home' ? '/' : `/${page.toLowerCase()}`}
             >
               {page}
             </Link>
