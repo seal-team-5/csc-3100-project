@@ -26,7 +26,12 @@ including the database name containing the `recipes` collection:
 
 ```env
 MONGODB_URL=mongodb+srv://<username>:<password>@<cluster>/<database>
+SESSION_SECRET=<random-secret-at-least-32-bytes-long>
 ```
+
+Generate a session secret with `node -p "require('crypto').randomBytes(32).toString('hex')"`
+and save the output as `SESSION_SECRET` in `.env`. Keep the existing database name
+if your recipes are already populated (a URL without a database name uses `test`).
 
 Start the API in one terminal from the project root:
 
@@ -40,9 +45,17 @@ Start the frontend in a second terminal from the project root:
 npm run dev:client
 ```
 
-Open the URL printed by Vite (usually `http://localhost:5173`). Vite forwards
-`/api` requests to the API on port 3001. If you set a different `PORT` for the
-API, update the target in `packages/client/vite.config.ts` to match.
+Open the URL printed by Vite (`http://127.0.0.1:5173`). Vite forwards
+`/api` requests to the API on port 3000. If you set a different `PORT` for the
+API, update the target in `packages/client/vite.config.ts` to match. Development login expects the browser origin `http://127.0.0.1:5173`;
+set `APP_ORIGIN` in `.env` if you use a different browser URL. Both authentication
+and recipes use the same backend. `npm run dev` also starts that backend.
+
+To serve the built frontend through the backend, run `npm run build`, then start
+with `APP_ORIGIN=http://localhost:3000 npm start` and open `http://localhost:3000`.
+
+Run `npm test` for authentication checks and `npm run test:recipes` for a read-only
+integration check against the MongoDB configured in `.env`.
 
 `GET /api/recipes` reads the MongoDB `recipes` collection. Both filter options
 and recipe suggestions come exclusively from those records; there is no sample
