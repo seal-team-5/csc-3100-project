@@ -2,11 +2,14 @@ import mongoose from 'mongoose';
 import MongoStore from 'connect-mongo';
 import connectDB from './database.ts';
 import User from './userSchema.ts';
+import Recipe from './recipeSchema.ts';
 import { createApp } from './app.js';
 
 const port = Number(process.env.PORT || 3000);
 const production = process.env.NODE_ENV === 'production';
-if (!process.env.MONGO_URI) throw new Error('Set MONGO_URI in .env.');
+if (!process.env.MONGO_URI && !process.env.MONGODB_URL) {
+  throw new Error('Set MONGO_URI or MONGODB_URL in .env.');
+}
 if (
   !process.env.SESSION_SECRET ||
   process.env.SESSION_SECRET.startsWith('replace-with-') ||
@@ -29,9 +32,12 @@ sessionStore.on('error', (error) =>
 );
 const app = createApp({
   User,
+  Recipe,
   sessionStore,
   sessionSecret: process.env.SESSION_SECRET,
-  appOrigin: process.env.APP_ORIGIN || `http://localhost:${port}`,
+  appOrigin:
+    process.env.APP_ORIGIN ||
+    (production ? `http://localhost:${port}` : 'http://127.0.0.1:5173'),
   production,
 });
 // Set an explicit trusted proxy network only when your HTTPS deployment needs it.

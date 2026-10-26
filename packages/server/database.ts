@@ -10,7 +10,7 @@ let connection: Promise<typeof mongoose> | undefined;
  */
 
 const connectDB = async () => {
-  const url = process.env.MONGO_URI;
+  const url = process.env.MONGO_URI || process.env.MONGODB_URL;
   if (!url) {
     throw new Error('Set MONGO_URI or MONGODB_URL in .env');
   }
