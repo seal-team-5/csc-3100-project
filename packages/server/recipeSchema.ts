@@ -2,7 +2,7 @@ import mongoose, { Schema } from 'mongoose';
 
 /*
   Fetch via:
-  const response = await fetch("/api/users");
+  const response = await fetch("/api/recipes");
 */
 
 export type Filter = {

@@ -54,7 +54,7 @@ export default function Login() {
   }
 
   return (
-    <main className="login-page">
+    <section className="login-page">
       <h1>{creatingAccount ? 'Create an account' : 'Welcome to RecipeMe'}</h1>
       <form onSubmit={handleSubmit} aria-busy={submitting}>
         {creatingAccount && (
@@ -141,6 +141,6 @@ export default function Login() {
           </button>
         </div>
       </form>
-    </main>
+    </section>
   );
 }
