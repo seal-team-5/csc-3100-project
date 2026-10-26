@@ -16,3 +16,6 @@ Storyboards: https://docs.google.com/presentation/d/1b7oeCzfKdJEQcCVTSTVfzaZrkeR
 
 This project follows the Google JavaScript Style Guide (https://google.github.io/styleguide/jsguide.html).
 Code style will be enforced automatically via ESLint and Prettier.
+
+## Working on backend:
+For session secret: run node -e "console.log(require('crypto').randomBytes(32).toString('hex'))" in your terminal and then write into your .env 
