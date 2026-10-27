@@ -27,25 +27,24 @@
     "dev:demo": "node packages/server/demo.js"
   },
   "dependencies": {
+    "bcrypt": "^6.0.0",
+    "connect-mongo": "^6.0.0",
     "dotenv": "^18.0.7",
     "eslint": "^10.11.0",
     "eslint-config-google": "^0.14.0",
     "express": "^5.2.1",
-    "mongodb": "^7.7.0",
+    "express-rate-limit": "^8.7.1",
+    "express-session": "^1.19.0",
     "mongoose": "^9.11.0",
     "node": "^22.23.3",
     "prettier": "^3.9.8",
     "react": "^19.3.0",
-    "typescript": "^7.0.2",
-    "bcrypt": "^6.0.0",
-    "connect-mongo": "^6.0.0",
-    "express-rate-limit": "^8.7.1",
-    "express-session": "^1.19.0"
+    "typescript": "^7.0.2"
   },
   "devDependencies": {
+    "@types/bcrypt": "^6.0.0",
     "@types/node": "^26.6.4",
-    "tsx": "^4.23.15",
-    "@types/bcrypt": "^6.0.0"
+    "tsx": "^4.23.15"
   },
   "engines": {
     "node": ">=22.18.0"

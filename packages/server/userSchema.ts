@@ -5,11 +5,16 @@ import mongoose, { Schema } from 'mongoose';
   const response = await fetch("/api/user");
 */
 
+/* Ensure that both the type and schema are updated together! */
+
 export type User = {
   username: string;
   email: string;
-  phone: string;
   password: string; /* bcrypt hash; never a plaintext password */
+  favorites: string[]; /* array of recipe IDs */
+  settings: {
+    evilSetting: boolean;
+  };
 };
 
 const userSchema = new Schema<User>(
@@ -23,7 +28,6 @@ const userSchema = new Schema<User>(
       unique: true,
       maxlength: 254,
     },
-    phone: { type: String, required: true, trim: true, maxlength: 40 },
     password: {
       type: String,
       required: true,
@@ -31,12 +35,16 @@ const userSchema = new Schema<User>(
       // Routes hash passwords before saving; reject accidental plaintext writes.
       match: /^\$2[ab]\$12\$[./A-Za-z0-9]{53}$/,
     },
+    favorites: { type: [String], default: [] },
+    settings: {
+      evilSetting: { type: Boolean, default: false },
+    },
   },
   {
     collection: 'users',
     toJSON: {
       transform: (_doc, ret) => {
-        delete ret.password;
+        delete (ret as Partial<User>).password;
         return ret;
       },
     },

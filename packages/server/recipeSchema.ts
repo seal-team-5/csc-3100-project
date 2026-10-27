@@ -48,5 +48,4 @@ const recipeSchema = new Schema<Recipe>(
   { collection: 'recipes' }
 );
 
-export default mongoose.models.Recipe ||
-  mongoose.model<Recipe>('Recipe', recipeSchema);
+export default mongoose.models.Recipe || mongoose.model<Recipe>('Recipe', recipeSchema);

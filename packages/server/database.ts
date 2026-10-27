@@ -1,14 +1,6 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
 
-let connection: Promise<typeof mongoose> | undefined;
-
-/**
- * Makes a connection to a MongoDB database. If a connection already exists, does nothing
- * Call this function before all api routes
- * @returns {Promise<typeof mongoose>}
- */
-
 const connectDB = async () => {
   const url = process.env.MONGO_URI || process.env.MONGODB_URL;
   if (!url) {
