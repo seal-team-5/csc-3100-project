@@ -6,12 +6,19 @@ import mongoose, { Schema } from 'mongoose';
 */
 
 /* Ensure that both the type and schema are updated together! */
+export type RecipeProgress = {
+  recipeName: string;
+  status: 'in-progress' | 'completed';
+  startedAt: Date;
+  completedAt?: Date;
+};
 
 export type User = {
   username: string;
   email: string;
   password: string; /* bcrypt hash; never a plaintext password */
   favorites: string[]; /* array of recipe IDs */
+  recipeProgress: RecipeProgress[];
   settings: {
     evilSetting: boolean;
   };
@@ -38,6 +45,22 @@ const userSchema = new Schema<User>(
     favorites: { type: [String], default: [] },
     settings: {
       evilSetting: { type: Boolean, default: false },
+    },
+
+    recipeProgress: {
+      type: [
+        {
+          recipeName: { type: String, required: true },
+          status: {
+            type: String,
+            enum: ['in-progress', 'completed'],
+            required: true,
+          },
+          startedAt: { type: Date, default: Date.now },
+          completedAt: { type: Date },
+        },
+      ],
+      default: [],
     },
   },
   {
