@@ -105,6 +105,8 @@ test('registration, login, session rotation, current user, and logout', async (t
   const { request, records } = await fixture(t);
   assert.equal((await request('/')).status, 200);
   assert.equal((await request('/login')).status, 200);
+  assert.equal((await request('/grocery-list')).status, 200);
+  assert.equal((await request('/recipes')).status, 404);
   assert.equal((await request('/src/App.tsx')).status, 404);
   assert.equal((await request('/api/unknown')).status, 404);
   assert.equal((await request('/api/auth/me')).status, 401);

@@ -1,241 +1,189 @@
-import { useEffect, useState } from 'react';
-import RecipeReview from './RecipeReview';
+import { useEffect, useMemo, useState } from 'react';
+import RecipeCard from '../components/RecipeCard';
+import RecipeDialog from '../components/RecipeDialog';
+import { filterMatches, getRecipeResult, resultFor } from '../lib/recipes';
+import type {
+  RecipeFilter,
+  RecipeProgress,
+  RecipeResult,
+  RecipeSummary,
+} from '../lib/recipes';
 
-type RecipeFilter = {
-  name: string;
-  type: string;
+type SummaryResponse = {
+  recipes: RecipeSummary[];
+  filterGroups: Record<string, string[]>;
 };
+const filterLabel = (type: string) =>
+  type.charAt(0).toUpperCase() + type.slice(1);
 
-type Recipe = {
-  image: string;
-  name: string;
-  ingredients: string[];
-  instructions: string[];
-  filters: RecipeFilter[];
-};
-
-type RecipeResult = {
-  recipe: Recipe;
-  exactMatch: boolean;
-  changedFilters: RecipeFilter[];
-};
-
-function getFilterGroups(recipes: Recipe[]) {
-  const groups = recipes.reduce<Record<string, string[]>>((groups, recipe) => {
-    recipe.filters.forEach((filter) => {
-      groups[filter.type] = groups[filter.type] || [];
-      if (!groups[filter.type].includes(filter.name)) {
-        groups[filter.type].push(filter.name);
-      }
-    });
-    return groups;
-  }, {});
-
-  Object.values(groups).forEach((filters) => filters.sort());
-  return groups;
-}
-
-const randomFrom = <T,>(items: T[]) =>
-  items[Math.floor(Math.random() * items.length)];
-
-function filterMatches(recipe: Recipe, selectedFilter: RecipeFilter) {
-  return recipe.filters.some(
-    (filter) =>
-      filter.type === selectedFilter.type && filter.name === selectedFilter.name
+export default function RecipeFinder({ username }: { username?: string }) {
+  const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
+  const [filterGroups, setFilterGroups] = useState<Record<string, string[]>>(
+    {}
   );
-}
-
-function getRecipeResult(
-  recipes: Recipe[],
-  selectedFilters: RecipeFilter[]
-): RecipeResult | null {
-  if (recipes.length === 0) return null;
-
-  if (selectedFilters.length === 0) {
-    return {
-      recipe: randomFrom(recipes),
-      exactMatch: true,
-      changedFilters: [],
-    };
-  }
-
-  const matchingRecipes = recipes.filter((recipe) =>
-    selectedFilters.every((filter) => filterMatches(recipe, filter))
-  );
-
-  if (matchingRecipes.length > 0) {
-    return {
-      recipe: randomFrom(matchingRecipes),
-      exactMatch: true,
-      changedFilters: [],
-    };
-  }
-
-  const rankedRecipes = recipes
-    .map((recipe) => ({
-      recipe,
-      exactMatch: false,
-      changedFilters: selectedFilters.filter(
-        (filter) => !filterMatches(recipe, filter)
-      ),
-    }))
-    .sort((a, b) => a.changedFilters.length - b.changedFilters.length);
-
-  const oneOrTwoChanged = rankedRecipes.filter(
-    (result) =>
-      result.changedFilters.length >= 1 && result.changedFilters.length <= 2
-  );
-  const fallbackPool =
-    oneOrTwoChanged.length > 0 ? oneOrTwoChanged : rankedRecipes;
-  const closestChangeCount = fallbackPool[0].changedFilters.length;
-  const closestRecipes = fallbackPool.filter(
-    (result) => result.changedFilters.length === closestChangeCount
-  );
-
-  return randomFrom(closestRecipes);
-}
-
-export default function RecipeFinder() {
-  const [recipes, setRecipes] = useState<Recipe[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [error, setError] = useState('');
   const [reload, setReload] = useState(0);
-  const filterGroups = getFilterGroups(recipes);
+  const [selectedFilters, setSelectedFilters] = useState<RecipeFilter[]>([]);
+  const [expandedFilters, setExpandedFilters] = useState(false);
+  const [recipeResult, setRecipeResult] = useState<RecipeResult | null>(null);
+  const [progress, setProgress] = useState<RecipeProgress[]>([]);
 
   useEffect(() => {
     const controller = new AbortController();
-
     async function loadRecipes() {
       setLoading(true);
-      setError(null);
+      setError('');
       try {
-        const response = await fetch('/api/recipes', {
+        const response = await fetch('/api/recipes?view=summary', {
           signal: controller.signal,
           cache: 'no-store',
         });
-        if (!response.ok) {
+        if (!response.ok)
           throw new Error('Unable to load recipes. Please try again.');
+        const data: SummaryResponse = await response.json();
+        if (!controller.signal.aborted) {
+          setRecipes(data.recipes);
+          setFilterGroups(data.filterGroups);
         }
-        const data: { recipes: Recipe[] } = await response.json();
-        if (!controller.signal.aborted) setRecipes(data.recipes);
       } catch {
         if (!controller.signal.aborted) {
           setRecipes([]);
+          setFilterGroups({});
           setError('Unable to load recipes. Please try again.');
         }
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
     }
-
     void loadRecipes();
     return () => controller.abort();
   }, [reload]);
 
-  const [selectedFilters, setSelectedFilters] = useState<RecipeFilter[]>([]);
-  const [recipeResult, setRecipeResult] = useState<RecipeResult | null>(null);
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/recipe-progress', { signal: controller.signal })
+      .then(async (response) => {
+        if (response.ok) {
+          const data: { recipeProgress: RecipeProgress[] } =
+            await response.json();
+          if (!controller.signal.aborted) setProgress(data.recipeProgress);
+        }
+      })
+      .catch(() => {
+        /* Progress is optional; guests can browse recipes. */
+      });
+    return () => controller.abort();
+  }, []);
 
-  const toggleFilter = (filter: RecipeFilter) => {
-    setSelectedFilters((currentFilters) => {
-      const isSelected = currentFilters.some(
-        (selected) =>
-          selected.type === filter.type && selected.name === filter.name
-      );
-
-      if (isSelected) {
-        return currentFilters.filter(
-          (selected) =>
-            selected.type !== filter.type || selected.name !== filter.name
-        );
-      }
-
-      return [...currentFilters, filter];
-    });
-  };
-
-  const showRecipe = () => {
-    setRecipeResult(getRecipeResult(recipes, selectedFilters));
-  };
-
-  async function updateRecipeProgress(
-    recipeName: string,
-    status: 'in-progress' | 'completed'
-  ) {
-    const response = await fetch('/api/recipe-progress', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recipeName, status }),
-    });
-  
-    if (!response.ok) {
-      alert(
-        response.status === 401
-          ? 'Please log in to track recipe progress.'
-          : 'Could not update recipe progress.'
-      );
-    }
-  }
+  const matches = useMemo(
+    () =>
+      recipes.filter((recipe) =>
+        selectedFilters.every((filter) => filterMatches(recipe, filter))
+      ),
+    [recipes, selectedFilters]
+  );
+  const activeRecipes = recipes.filter((recipe) =>
+    progress.some(
+      (item) => item.recipeName === recipe.name && item.status === 'in-progress'
+    )
+  );
+  const toggleFilter = (filter: RecipeFilter) =>
+    setSelectedFilters((current) =>
+      current.some(
+        (item) => item.type === filter.type && item.name === filter.name
+      )
+        ? current.filter(
+            (item) => item.type !== filter.type || item.name !== filter.name
+          )
+        : [...current, filter]
+    );
+  const openRecipe = (recipe: RecipeSummary) =>
+    setRecipeResult(resultFor(recipe, selectedFilters));
+  const showRecipe = () =>
+    setRecipeResult(
+      getRecipeResult(recipes, selectedFilters, recipeResult?.recipe.id)
+    );
 
   return (
     <section className="home-page">
       <div className="home-intro">
-        <h1>Find a recipe</h1>
-        <p>
-          Choose filters by type, then RecipeMe will pick a random recipe that
-          matches them. If there is not an exact match, it will suggest the
-          closest recipe instead.
-        </p>
+        <h1>
+          {username ? `Hello, ${username}!` : 'Find your next favorite recipe'}
+        </h1>
+        <button
+          className="primary-button show-recipe-button"
+          disabled={loading || !!error || !recipes.length}
+          onClick={showRecipe}
+          type="button"
+        >
+          Show me a recipe!
+        </button>
       </div>
-
       <section className="filter-panel" aria-labelledby="filter-heading">
         <div className="filter-panel-header">
           <div>
-            <h2 id="filter-heading">Filters</h2>
-            <p>Mix and match options from each filter type.</p>
+            <h2 id="filter-heading">Preferences</h2>
+            <p>Quickly update the filters that shape your recipe matches.</p>
           </div>
-          <button
-            className="secondary-button"
-            onClick={() => setSelectedFilters([])}
-            type="button"
-          >
-            Clear
-          </button>
-        </div>
-
-        {loading && <p role="status">Loading recipes…</p>}
-        {error && (
-          <div role="alert">
-            <p>{error}</p>
+          {!!selectedFilters.length && (
             <button
-              className="secondary-button"
-              onClick={() => setReload((value) => value + 1)}
+              className="text-button"
+              onClick={() => setSelectedFilters([])}
               type="button"
             >
-              Retry
+              Clear all
             </button>
-          </div>
-        )}
-        {!loading && !error && recipes.length === 0 && (
-          <p role="status">No recipes are available yet.</p>
-        )}
-
-        <div className="filter-groups">
-          {Object.entries(filterGroups).map(([type, filters]) => (
+          )}
+        </div>
+        <div className="filter-toolbar">
+          <button
+            className="filter-toggle"
+            aria-expanded={expandedFilters}
+            aria-controls="recipe-filter-options"
+            onClick={() => setExpandedFilters((value) => !value)}
+            disabled={loading || !!error || !recipes.length}
+            type="button"
+          >
+            <img src="/design/filter.png" alt="" width="28" height="28" />
+            {expandedFilters ? 'Hide filters' : 'Add Filter…'}
+            {!!selectedFilters.length && (
+              <span className="filter-count">{selectedFilters.length}</span>
+            )}
+          </button>
+          {selectedFilters.map((filter) => (
+            <button
+              className="selected-filter"
+              key={`${filter.type}-${filter.name}`}
+              onClick={() => toggleFilter(filter)}
+              aria-label={`Remove ${filter.type}: ${filter.name}`}
+              type="button"
+            >
+              {filterLabel(filter.type)}: {filter.name}
+              <span aria-hidden="true">×</span>
+            </button>
+          ))}
+        </div>
+        <div
+          className="filter-groups"
+          id="recipe-filter-options"
+          hidden={!expandedFilters}
+        >
+          {Object.entries(filterGroups).map(([type, names]) => (
             <fieldset className="filter-group" key={type}>
-              <legend>{type}</legend>
+              <legend>{filterLabel(type)}</legend>
               <div className="filter-options">
-                {filters.map((name) => {
-                  const isSelected = selectedFilters.some(
+                {names.map((name) => {
+                  const selected = selectedFilters.some(
                     (filter) => filter.type === type && filter.name === name
                   );
-
                   return (
                     <label
-                      className={`filter-pill ${isSelected ? 'selected' : ''}`}
-                      key={`${type}-${name}`}
+                      className={`filter-pill ${selected ? 'selected' : ''}`}
+                      key={name}
                     >
                       <input
-                        checked={isSelected}
+                        checked={selected}
                         onChange={() => toggleFilter({ type, name })}
                         type="checkbox"
                       />
@@ -247,112 +195,100 @@ export default function RecipeFinder() {
             </fieldset>
           ))}
         </div>
-
-        <button
-          className="primary-button"
-          disabled={loading || !!error || recipes.length === 0}
-          onClick={showRecipe}
-          type="button"
-        >
-          Show me a recipe
-        </button>
       </section>
-
-      {recipeResult && (
-        <div className="modal-backdrop">
-          <article
-            aria-labelledby="recipe-title"
-            aria-modal="true"
-            className="recipe-modal"
-            role="dialog"
+      {loading && (
+        <p role="status" className="recipe-state">
+          Loading recipes…
+        </p>
+      )}
+      {error && (
+        <div role="alert" className="recipe-state">
+          <p>{error}</p>
+          <button
+            className="secondary-button"
+            onClick={() => setReload((value) => value + 1)}
+            type="button"
           >
-            <button
-              aria-label="Close recipe"
-              className="close-button"
-              onClick={() => setRecipeResult(null)}
-              type="button"
+            Retry
+          </button>
+        </div>
+      )}
+      {!loading && !error && (
+        <>
+          {activeRecipes.length > 0 && (
+            <section
+              className="recipe-section"
+              aria-labelledby="active-recipes-heading"
             >
-              x
-            </button>
-
-            <img src={recipeResult.recipe.image} alt="" />
-
-            <div className="recipe-content">
-              <p className="match-note">
-                {recipeResult.exactMatch
-                  ? 'Matches your filters'
-                  : `Closest match with ${
-                      recipeResult.changedFilters.length
-                    } changed ${
-                      recipeResult.changedFilters.length === 1
-                        ? 'filter'
-                        : 'filters'
-                    }`}
-              </p>
-              <h2 id="recipe-title">{recipeResult.recipe.name}</h2>
-
-              {!recipeResult.exactMatch && (
-                <p className="similar-note">
-                  No recipe matched everything, so this suggestion changes{' '}
-                  {recipeResult.changedFilters
-                    .map((filter) => `${filter.type}: ${filter.name}`)
-                    .join(', ')}
-                  .
-                </p>
-              )}
-
-              <div className="recipe-tags">
-                {recipeResult.recipe.filters.map((filter) => (
-                  <span key={`${filter.type}-${filter.name}`}>
-                    {filter.name}
-                  </span>
+              <div className="recipe-section-heading">
+                <h2 id="active-recipes-heading">Active Recipes</h2>
+                <span>
+                  {activeRecipes.length}{' '}
+                  {activeRecipes.length === 1 ? 'recipe' : 'recipes'}
+                </span>
+              </div>
+              <div className="recipe-grid">
+                {activeRecipes.map((recipe) => (
+                  <RecipeCard
+                    key={recipe.id}
+                    recipe={recipe}
+                    onOpen={openRecipe}
+                  />
                 ))}
               </div>
-
-              <h3>Ingredients</h3>
-              <ul>
-                {recipeResult.recipe.ingredients.map((ingredient) => (
-                  <li key={ingredient}>{ingredient}</li>
-                ))}
-              </ul>
-
-              <h3>Instructions</h3>
-              <ol>
-                {recipeResult.recipe.instructions.map((step) => (
-                  <li key={step}>{step}</li>
-                ))}
-              </ol>
-
-              <div className="recipe-progress-actions">
-                <button
-                  onClick={() =>
-                    updateRecipeProgress(recipeResult.recipe.name, 'in-progress')
-                  }
-                >
-                  Mark In Progress
-                </button>
-                <button
-                  onClick={() =>
-                    updateRecipeProgress(recipeResult.recipe.name, 'completed')
-                  }
-                >             
-                 Mark Completed
-                </button>
-                </div>
-        
-
-              <button
-                className="primary-button"
-                disabled={loading || !!error || recipes.length === 0}
-                onClick={showRecipe}
-                type="button"
-              >
-                Regenerate
-              </button>
-              <RecipeReview />
+            </section>
+          )}
+          <section
+            className="recipe-section"
+            aria-labelledby="recipe-grid-heading"
+          >
+            <div className="recipe-section-heading">
+              <h2 id="recipe-grid-heading">
+                {selectedFilters.length
+                  ? 'Matching Recipes'
+                  : 'Discover Recipes'}
+              </h2>
+              <span role="status">
+                {matches.length} {matches.length === 1 ? 'recipe' : 'recipes'}
+              </span>
             </div>
-          </article>
-        </div>
+            {!recipes.length ? (
+              <p className="recipe-state">No recipes are available yet.</p>
+            ) : !matches.length ? (
+              <div className="recipe-state">
+                <p>
+                  No recipes match every filter. Clear a filter to browse more,
+                  or choose “Show me a recipe” for the closest match.
+                </p>
+                <button
+                  className="secondary-button"
+                  onClick={() => setSelectedFilters([])}
+                  type="button"
+                >
+                  Clear filters
+                </button>
+              </div>
+            ) : (
+              <div className="recipe-grid">
+                {matches.map((recipe) => (
+                  <RecipeCard
+                    key={recipe.id}
+                    recipe={recipe}
+                    onOpen={openRecipe}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
+        </>
+      )}
+      {recipeResult && (
+        <RecipeDialog
+          result={recipeResult}
+          onClose={() => setRecipeResult(null)}
+          onRegenerate={showRecipe}
+          onProgress={setProgress}
+        />
       )}
     </section>
   );

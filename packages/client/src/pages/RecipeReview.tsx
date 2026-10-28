@@ -2,7 +2,11 @@ import { useState } from 'react'; //allows retrieval of updated states for compo
 import './RecipeReview.css'; //import css for styling
 import type { FormEvent } from 'react'; //specify use of form element (grouping name, note, and rating)
 
-export default function RecipeReview() {
+export default function RecipeReview({
+  recipeName: selectedRecipeName,
+}: {
+  recipeName?: string;
+}) {
   //component to be imported by button
   const [isOpen, setIsOpen] = useState(false); //useState to false makes form hidden
   const [recipeName, setRecipeName] = useState(''); // plan to store as string
@@ -14,7 +18,7 @@ export default function RecipeReview() {
     event.preventDefault(); //stops page from normal submission behavior
 
     const review = {
-      recipeName: recipeName.trim(),
+      recipeName: selectedRecipeName || recipeName.trim(),
       rating,
       note: note.trim(), //trim to remove whitespace
     };
@@ -28,10 +32,44 @@ export default function RecipeReview() {
 
   return (
     <section>
-      <button onClick={() => setIsOpen(true)}>
+      <h3>Rate this recipe</h3>
+      <fieldset className="review-rating">
+        <legend>Rating out of 5</legend>
+        <div className="review-stars">
+          {[1, 2, 3, 4, 5].map((score) => (
+            <label className="review-star" key={score}>
+              <input
+                type="radio"
+                name="recipe-rating"
+                value={score}
+                checked={rating === score}
+                onChange={() => setRating(score)}
+                aria-label={`${score} ${score === 1 ? 'star' : 'stars'}`}
+              />
+              <img
+                src={
+                  score <= rating
+                    ? '/design/star-filled.png'
+                    : '/design/star-empty.png'
+                }
+                width="38"
+                height="38"
+                alt=""
+              />
+            </label>
+          ))}
+          <span>{rating}/5</span>
+        </div>
+      </fieldset>
+
+      <button
+        className="secondary-button"
+        type="button"
+        onClick={() => setIsOpen(true)}
+      >
         {' '}
         {/*display the form*/}
-        Review a recipe!!
+        Write a review
       </button>
 
       {isOpen && (
@@ -45,22 +83,10 @@ export default function RecipeReview() {
             id="recipe-name"
             required
             maxLength={100}
-            value={recipeName}
+            value={selectedRecipeName || recipeName}
+            readOnly={!!selectedRecipeName}
             onChange={(event) => setRecipeName(event.target.value)}
           />
-          <label htmlFor="recipe-rating">Rating out of 5</label>
-          <select
-            id="recipe-rating"
-            value={rating}
-            onChange={(event) => setRating(Number(event.target.value))}
-          >
-            {[1, 2, 3, 4, 5].map((score) => (
-              <option key={score} value={score}>
-                {score} {score === 1 ? 'star' : 'stars'}
-              </option>
-            ))}{' '}
-            {/* closes loop and dropdown*/}
-          </select>
           <label htmlFor="review-note">Review note</label>
           <textarea
             id="review-note"
@@ -69,8 +95,14 @@ export default function RecipeReview() {
             value={note}
             onChange={(event) => setNote(event.target.value)}
           />
-          <button type="submit">Submit review</button>
-          <button type="button" onClick={() => setIsOpen(false)}>
+          <button className="primary-button" type="submit">
+            Submit review
+          </button>
+          <button
+            className="text-button"
+            type="button"
+            onClick={() => setIsOpen(false)}
+          >
             Cancel
           </button>
         </form>

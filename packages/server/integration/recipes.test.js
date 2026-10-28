@@ -41,9 +41,31 @@ test('the combined API serves the actual MongoDB recipe collection', async (t) =
   }));
   const byName = (a, b) => a.name.localeCompare(b.name);
   assert.deepEqual(payload.recipes.sort(byName), expected.sort(byName));
+  const summaryResponse = await fetch(`${base}/api/recipes?view=summary`);
+  assert.equal(summaryResponse.status, 200);
+  const summaries = await summaryResponse.json();
+  assert.equal(summaries.recipes.length, documents.length);
+  assert.deepEqual(
+    summaries.recipes.map((recipe) => recipe.id).sort(),
+    documents.map((recipe) => String(recipe._id)).sort()
+  );
+  for (const summary of summaries.recipes) {
+    assert.equal('ingredients' in summary, false);
+    assert.equal('instructions' in summary, false);
+  }
+  if (documents.length) {
+    const document = documents[0];
+    const detailResponse = await fetch(`${base}/api/recipes/${document._id}`);
+    assert.equal(detailResponse.status, 200);
+    const { recipe } = await detailResponse.json();
+    assert.equal(recipe.id, String(document._id));
+    assert.equal(recipe.name, document.Name);
+    assert.deepEqual(recipe.ingredients, document.Ingredients);
+    assert.deepEqual(recipe.instructions, document.Instructions);
+  }
   assert.equal((await fetch(`${base}/api/auth/me`)).status, 401);
   assert.equal((await fetch(`${base}/api/unknown`)).status, 404);
-  const page = await fetch(`${base}/recipes`);
+  const page = await fetch(`${base}/grocery-list`);
   assert.equal(page.status, 200);
   assert.match(
     page.headers.get('content-security-policy'),
