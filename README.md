@@ -73,6 +73,12 @@ favorites. The request body must include a valid MongoDB recipe ID:
 ```json
 { "recipeId": "..." }
 
+If the recipe is already saved, the endpoint removes it; otherwise, it adds it.
+The response returns the updated favorites array. Favorites are stored on the
+user document as recipe IDs, while the Favorites page loads recipe summaries
+from GET /api/recipes?view=summary and displays recipes with matching IDs.
+```
+
 For an empty database, the optional command below imports real recipes from
 TheMealDB into the configured database. It writes recipe records, so run it only
 when you intend to populate that database:
