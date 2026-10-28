@@ -19,7 +19,7 @@ export default function Favorites() {
     async function loadFavorites() {
       try {
         const userResponse = await fetch('/api/user');
-        const recipesResponse = await fetch('/api/recipes');
+        const recipesResponse = await fetch('/api/recipes?view=summary');
 
         if (!userResponse.ok || !recipesResponse.ok) {
           throw new Error('Could not load favorites.');
