@@ -157,6 +157,25 @@ export default function RecipeFinder() {
     setRecipeResult(getRecipeResult(recipes, selectedFilters));
   };
 
+  async function updateRecipeProgress(
+    recipeName: string,
+    status: 'in-progress' | 'completed'
+  ) {
+    const response = await fetch('/api/recipe-progress', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipeName, status }),
+    });
+  
+    if (!response.ok) {
+      alert(
+        response.status === 401
+          ? 'Please log in to track recipe progress.'
+          : 'Could not update recipe progress.'
+      );
+    }
+  }
+
   return (
     <section className="home-page">
       <div className="home-intro">
@@ -303,6 +322,24 @@ export default function RecipeFinder() {
                   <li key={step}>{step}</li>
                 ))}
               </ol>
+
+              <div className="recipe-progress-actions">
+                <button
+                  onClick={() =>
+                    updateRecipeProgress(recipeResult.recipe.name, 'in-progress')
+                  }
+                >
+                  Mark In Progress
+                </button>
+                <button
+                  onClick={() =>
+                    updateRecipeProgress(recipeResult.recipe.name, 'completed')
+                  }
+                >             
+                 Mark Completed
+                </button>
+                </div>
+        
 
               <button
                 className="primary-button"

@@ -14,6 +14,11 @@ const dummyHash = await bcrypt.hash(
 
 export function createApp(options) {
   const { User, Recipe, production = false } = options;
+  
+  async function getAuthenticatedUser(req) {
+    if (!req.session?.userId) return null;
+    return User.findById(req.session.userId);
+  }
   const { app, loginLimiter, registerLimiter } = configureServer(options);
 
   app.get('/api/recipes', async (_req, res) => {
@@ -33,6 +38,52 @@ export function createApp(options) {
         error: 'Unable to load recipes from the database. Please try again.',
       });
     }
+  });
+
+  app.get('/api/recipe-progress', async (req, res) => {
+    const user = await getAuthenticatedUser(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+    res.set('Cache-Control', 'no-store');
+    res.json({ recipeProgress: user.recipeProgress || [] });
+  });
+  
+  app.post('/api/recipe-progress', async (req, res) => {
+    const user = await getAuthenticatedUser(req);
+    if (!user) return res.status(401).json({ error: 'Unauthorized' });
+  
+    const { recipeName, status } = req.body || {};
+    if (
+      typeof recipeName !== 'string' ||
+      !recipeName.trim() ||
+      !['in-progress', 'completed'].includes(status)
+    ) {
+      return res.status(400).json({ error: 'Invalid recipe progress' });
+    }
+  
+    const recipe = await Recipe.findOne({ Name: recipeName.trim() });
+    if (!recipe) return res.status(404).json({ error: 'Recipe not found' });
+  
+    const now = new Date();
+    const existing = user.recipeProgress.find(
+      (item) => item.recipeName === recipe.Name
+    );
+  
+    if (existing) {
+      existing.status = status;
+      if (status === 'completed') existing.completedAt = now;
+      else existing.completedAt = undefined;
+    } else {
+      user.recipeProgress.push({
+        recipeName: recipe.Name,
+        status,
+        startedAt: now,
+        ...(status === 'completed' ? { completedAt: now } : {}),
+      });
+    }
+  
+    await user.save();
+    res.set('Cache-Control', 'no-store');
+    res.json({ recipeProgress: user.recipeProgress });
   });
 
   // 1. Register: validate input, hash the password, then save the user.
@@ -111,6 +162,7 @@ export function createApp(options) {
     const user = await User.findById(req.session.userId);
     if (!user) return res.status(401).json({ error: 'Please log in.' });
     return res.json({ user: publicUser(user) });
+    
   });
 
   // Log out: delete the server session and clear teh cookie containing the session id to logout

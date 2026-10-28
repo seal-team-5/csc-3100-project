@@ -1,10 +1,11 @@
+
 import 'dotenv/config';
 
 import mongoose from 'mongoose';
 
 let connection: Promise<typeof mongoose> | undefined;
 
-const connectDB = async () => {
+export default async function connectDB() {
   const url = process.env.MONGO_URI || process.env.MONGODB_URL;
 
   if (!url) {
@@ -20,10 +21,12 @@ const connectDB = async () => {
   }
 
   try {
-    return await connection;
-  } finally {
+    await connection;
+    console.log('Connected to MongoDB');
+    return mongoose;
+  } catch (error) {
     connection = undefined;
+    throw error;
   }
-};
+}
 
-export default connectDB;

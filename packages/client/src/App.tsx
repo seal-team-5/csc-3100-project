@@ -6,9 +6,11 @@ import {
   Outlet,
 } from 'react-router-dom';
 import Home from './pages/Home';
+import History from './pages/History';
 import RecipeFinder from './pages/RecipeFinder';
 import Login from './pages/Login';
 import './App.css';
+
 
 function Layout() {
   const pages = ['Home', 'Recipes', 'History', 'Favorites', 'Login'];
@@ -42,7 +44,7 @@ function App() {
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
           <Route path="/recipes" element={<RecipeFinder />} />
-          <Route path="/history" element={<h1>History</h1>} />
+          <Route path="/history" element={<History />} />
           <Route path="/favorites" element={<h1>Favorites</h1>} />
           <Route path="/login" element={<Login />} />
         </Route>
