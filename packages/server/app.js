@@ -21,6 +21,62 @@ export function createApp(options) {
   }
   const { app, loginLimiter, registerLimiter } = configureServer(options);
 
+  // returns the signed-in user's public data and favorite recipe IDs.
+  app.get('/api/user', async (req, res) => {
+    const user = await getAuthenticatedUser(req);
+
+    if (!user) {
+      return res.status(401).json({ error: 'Please log in.' });
+    }
+
+    res.set('Cache-Control', 'no-store');
+
+    return res.json({
+      user: {
+        ...publicUser(user),
+        favorites: user.favorites || [],
+      },
+    });
+  });
+
+  // adds a recipe to favorites, or remove it if it is already favorited.
+  app.post('/api/favorites', async (req, res) => {
+    const user = await getAuthenticatedUser(req);
+
+    if (!user) {
+      return res.status(401).json({ error: 'Please log in.' });
+    }
+
+    const { recipeId } = req.body || {};
+
+    if (typeof recipeId !== 'string' || !/^[a-f\d]{24}$/i.test(recipeId)) {
+      return res.status(400).json({ error: 'Invalid recipe ID.' });
+    }
+
+    const recipe = await Recipe.findById(recipeId);
+
+    if (!recipe) {
+      return res.status(404).json({ error: 'Recipe not found.' });
+    }
+
+    const favorites = user.favorites || [];
+    const alreadyFavorite = favorites.includes(recipeId);
+
+    if (alreadyFavorite) {
+      user.favorites = favorites.filter((id) => id !== recipeId);
+    } else {
+      user.favorites.push(recipeId);
+    }
+
+    await user.save();
+
+    res.set('Cache-Control', 'no-store');
+
+    return res.json({
+      favorites: user.favorites,
+    });
+  });
+
   app.get('/api/recipes', async (req, res) => {
     try {
       const summary = req.query.view === 'summary';

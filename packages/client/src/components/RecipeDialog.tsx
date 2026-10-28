@@ -8,11 +8,15 @@ export default function RecipeDialog({
   onClose,
   onRegenerate,
   onProgress,
+  favoriteIds = [],
+  onFavoritesChange = () => {},
 }: {
   result: RecipeResult;
   onClose: () => void;
   onRegenerate: () => void;
   onProgress: (progress: RecipeProgress[]) => void;
+  favoriteIds?: string[];
+  onFavoritesChange: (favorites: string[]) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [loaded, setLoaded] = useState<{
@@ -28,6 +32,8 @@ export default function RecipeDialog({
     text: '',
   });
   const { id } = result.recipe;
+  const [savingFavorite, setSavingFavorite] = useState(false);
+  const isFavorite = favoriteIds.includes(id);
   const loading = loaded?.id !== id || loaded.retry !== retry;
   const detail = loading ? null : loaded.recipe;
   const error = loading ? '' : loaded.error;
@@ -114,6 +120,43 @@ export default function RecipeDialog({
       );
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function toggleFavorite() {
+    setSavingFavorite(true);
+    setProgressMessage('');
+
+    try {
+      const response = await fetch('/api/favorites', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipeId: id }),
+      });
+
+      if (!response.ok) {
+        throw new Error(
+          response.status === 401 || response.status === 403
+            ? 'Please log in to save favorite recipes.'
+            : 'Could not update favorites. Please try again.'
+        );
+      }
+
+      const data: { favorites: string[] } = await response.json();
+      onFavoritesChange(data.favorites);
+
+      setProgressMessage(
+        isFavorite
+          ? 'Recipe removed from favorites.'
+          : 'Recipe saved to favorites.'
+      );
+    } catch (cause) {
+      setProgressMessage(
+        cause instanceof Error ? cause.message : 'Could not update favorites.'
+      );
+    } finally {
+      setSavingFavorite(false);
     }
   }
 
@@ -244,6 +287,14 @@ export default function RecipeDialog({
                     type="button"
                   >
                     Mark Completed
+                  </button>
+                  <button
+                    className="secondary-button"
+                    disabled={savingFavorite}
+                    onClick={() => void toggleFavorite()}
+                    type="button"
+                  >
+                    {isFavorite ? 'Unfavorite' : 'Favorite'}
                   </button>
                 </div>
                 <p role="status" className="progress-message">

@@ -28,6 +28,20 @@ export default function RecipeFinder({ username }: { username?: string }) {
   const [expandedFilters, setExpandedFilters] = useState(false);
   const [recipeResult, setRecipeResult] = useState<RecipeResult | null>(null);
   const [progress, setProgress] = useState<RecipeProgress[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    async function loadFavoriteIds() {
+      const response = await fetch('/api/user');
+
+      if (!response.ok) return;
+
+      const data = await response.json();
+      setFavoriteIds(data.user.favorites || []);
+    }
+
+    void loadFavoriteIds();
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -288,6 +302,8 @@ export default function RecipeFinder({ username }: { username?: string }) {
           onClose={() => setRecipeResult(null)}
           onRegenerate={showRecipe}
           onProgress={setProgress}
+          favoriteIds={favoriteIds}
+          onFavoritesChange={setFavoriteIds}
         />
       )}
     </section>
