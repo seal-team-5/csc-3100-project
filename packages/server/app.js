@@ -77,6 +77,7 @@ export function createApp(options) {
     });
   });
 
+  // returns all recipes, or a summary of each recipe if the query parameter view=summary is present.
   app.get('/api/recipes', async (req, res) => {
     try {
       const summary = req.query.view === 'summary';
@@ -113,6 +114,7 @@ export function createApp(options) {
     }
   });
 
+  // returns a single recipe by ID, or 404 if not found.
   app.get('/api/recipes/:id', async (req, res) => {
     if (!/^[a-f\d]{24}$/i.test(req.params.id)) {
       return res.status(400).json({ error: 'Invalid recipe ID.' });
@@ -138,6 +140,7 @@ export function createApp(options) {
     }
   });
 
+  // returns the signed-in user's recipe progress, resolving any legacy entries by name to their current recipe IDs.
   app.get('/api/recipe-progress', async (req, res) => {
     const user = await getAuthenticatedUser(req);
     if (!user) return res.status(401).json({ error: 'Please log in.' });
@@ -167,6 +170,7 @@ export function createApp(options) {
     return res.json({ recipeProgress });
   });
 
+  // adds or updates a recipe progress entry for the signed-in user.
   app.post('/api/recipe-progress', async (req, res) => {
     const user = await getAuthenticatedUser(req);
     if (!user) return res.status(401).json({ error: 'Please log in.' });

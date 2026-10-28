@@ -1,3 +1,8 @@
+/*
+tsx file for Favorites page, which displays the user's favorite 
+recipes and allows them to view recipe details in a dialog.
+*/
+
 import { useEffect, useState } from 'react';
 import type { RecipeResult, RecipeSummary } from '../lib/recipes';
 import RecipeCard from '../components/RecipeCard';
@@ -15,6 +20,7 @@ export default function Favorites() {
   );
   const [message, setMessage] = useState('Loading favorites...');
 
+  // Load the user's favorite recipes when the component mounts
   useEffect(() => {
     async function loadFavorites() {
       try {
@@ -40,10 +46,12 @@ export default function Favorites() {
     void loadFavorites();
   }, []);
 
+  // Filter the recipes to only include those that are in the user's favorites
   const favoriteRecipes = recipes.filter((recipe) =>
     favoriteIds.includes(recipe.id)
   );
 
+  // Prepare the dialog result for the selected recipe, if any
   const dialogResult: RecipeResult | null = selectedRecipe
     ? {
         recipe: selectedRecipe,
