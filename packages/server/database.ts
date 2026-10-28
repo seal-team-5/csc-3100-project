@@ -1,19 +1,32 @@
+
+import 'dotenv/config';
+
 import mongoose from 'mongoose';
 
-const url: string = process.env.MONGO_URI as string;
-let connection: typeof mongoose;
+let connection: Promise<typeof mongoose> | undefined;
 
-/**
- * Makes a connection to a MongoDB database. If a connection already exists, does nothing
- * Call this function before all api routes
- * @returns {Promise<typeof mongoose>}
- */
+export default async function connectDB() {
+  const url = process.env.MONGO_URI || process.env.MONGODB_URL;
 
-const connectDB = async () => {
-  if (!connection) {
-    connection = await mongoose.connect(url);
-    return connection;
+  if (!url) {
+    throw new Error('Set MONGO_URI or MONGODB_URL in .env');
   }
-};
 
-export default connectDB;
+  if (mongoose.connection.readyState === 1) return mongoose;
+
+  if (!connection) {
+    connection = mongoose.connect(url, {
+      serverSelectionTimeoutMS: 10000,
+    });
+  }
+
+  try {
+    await connection;
+    console.log('Connected to MongoDB');
+    return mongoose;
+  } catch (error) {
+    connection = undefined;
+    throw error;
+  }
+}
+

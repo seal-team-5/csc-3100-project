@@ -1,7 +1,12 @@
 :root {
-  font-family: Arial, sans-serif;
-  color: #333;
-  background-color: white;
+  font-family:
+    Inter,
+    -apple-system,
+    BlinkMacSystemFont,
+    'Segoe UI',
+    sans-serif;
+  color: #111827;
+  background-color: #f6f7fb;
 }
 
 * {

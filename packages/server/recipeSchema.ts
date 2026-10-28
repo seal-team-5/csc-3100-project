@@ -2,7 +2,7 @@ import mongoose, { Schema } from 'mongoose';
 
 /*
   Fetch via:
-  const response = await fetch("/api/users");
+  const response = await fetch("/api/recipes");
 */
 
 export type Filter = {
@@ -48,5 +48,4 @@ const recipeSchema = new Schema<Recipe>(
   { collection: 'recipes' }
 );
 
-export default mongoose.models.Recipe ||
-  mongoose.model<Recipe>('Recipe', recipeSchema);
+export default mongoose.models.Recipe || mongoose.model<Recipe>('Recipe', recipeSchema);
