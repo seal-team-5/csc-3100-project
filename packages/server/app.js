@@ -14,28 +14,70 @@ const dummyHash = await bcrypt.hash(
 
 export function createApp(options) {
   const { User, Recipe, production = false } = options;
-  
+
   async function getAuthenticatedUser(req) {
     if (!req.session?.userId) return null;
     return User.findById(req.session.userId);
   }
   const { app, loginLimiter, registerLimiter } = configureServer(options);
 
-  app.get('/api/recipes', async (_req, res) => {
+  app.get('/api/recipes', async (req, res) => {
     try {
-      const documents = await Recipe.find({}).lean();
+      const summary = req.query.view === 'summary';
+      const query = Recipe.find({});
+      if (summary) query.select('Image Name Filters');
+      const documents = await query.lean();
       const recipes = documents.map((recipe) => ({
+        ...(summary ? { id: String(recipe._id) } : {}),
         image: recipe.Image,
         name: recipe.Name,
-        ingredients: recipe.Ingredients,
-        instructions: recipe.Instructions,
+        ...(!summary
+          ? {
+              ingredients: recipe.Ingredients,
+              instructions: recipe.Instructions,
+            }
+          : {}),
         filters: recipe.Filters.map(({ name, type }) => ({ name, type })),
       }));
-      return res.json({ recipes });
+      if (!summary) return res.json({ recipes });
+      const filterGroups = Object.create(null);
+      for (const recipe of recipes) {
+        for (const { type, name } of recipe.filters) {
+          filterGroups[type] ||= [];
+          if (!filterGroups[type].includes(name)) filterGroups[type].push(name);
+        }
+      }
+      Object.values(filterGroups).forEach((names) => names.sort());
+      return res.json({ recipes, filterGroups });
     } catch (error) {
       console.error('Recipe query failed:', error.name);
       return res.status(503).json({
         error: 'Unable to load recipes from the database. Please try again.',
+      });
+    }
+  });
+
+  app.get('/api/recipes/:id', async (req, res) => {
+    if (!/^[a-f\d]{24}$/i.test(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid recipe ID.' });
+    }
+    try {
+      const recipe = await Recipe.findById(req.params.id).lean();
+      if (!recipe) return res.status(404).json({ error: 'Recipe not found.' });
+      return res.json({
+        recipe: {
+          id: String(recipe._id),
+          image: recipe.Image,
+          name: recipe.Name,
+          ingredients: recipe.Ingredients,
+          instructions: recipe.Instructions,
+          filters: recipe.Filters.map(({ name, type }) => ({ name, type })),
+        },
+      });
+    } catch (error) {
+      console.error('Recipe detail query failed:', error.name);
+      return res.status(503).json({
+        error: 'Unable to load this recipe. Please try again.',
       });
     }
   });
@@ -46,11 +88,11 @@ export function createApp(options) {
     res.set('Cache-Control', 'no-store');
     res.json({ recipeProgress: user.recipeProgress || [] });
   });
-  
+
   app.post('/api/recipe-progress', async (req, res) => {
     const user = await getAuthenticatedUser(req);
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
-  
+
     const { recipeName, status } = req.body || {};
     if (
       typeof recipeName !== 'string' ||
@@ -59,15 +101,15 @@ export function createApp(options) {
     ) {
       return res.status(400).json({ error: 'Invalid recipe progress' });
     }
-  
+
     const recipe = await Recipe.findOne({ Name: recipeName.trim() });
     if (!recipe) return res.status(404).json({ error: 'Recipe not found' });
-  
+
     const now = new Date();
     const existing = user.recipeProgress.find(
       (item) => item.recipeName === recipe.Name
     );
-  
+
     if (existing) {
       existing.status = status;
       if (status === 'completed') existing.completedAt = now;
@@ -80,7 +122,7 @@ export function createApp(options) {
         ...(status === 'completed' ? { completedAt: now } : {}),
       });
     }
-  
+
     await user.save();
     res.set('Cache-Control', 'no-store');
     res.json({ recipeProgress: user.recipeProgress });
@@ -162,7 +204,6 @@ export function createApp(options) {
     const user = await User.findById(req.session.userId);
     if (!user) return res.status(401).json({ error: 'Please log in.' });
     return res.json({ user: publicUser(user) });
-    
   });
 
   // Log out: delete the server session and clear teh cookie containing the session id to logout

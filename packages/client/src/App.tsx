@@ -7,13 +7,12 @@ import {
 } from 'react-router-dom';
 import Home from './pages/Home';
 import History from './pages/History';
-import RecipeFinder from './pages/RecipeFinder';
 import Login from './pages/Login';
 import Favorites from './pages/Favorites';
 import './App.css';
 
 function Layout() {
-  const pages = ['Home', 'Recipes', 'History', 'Favorites', 'Login'];
+  const pages = ['Home', 'Grocery List', 'History', 'Favorites', 'Login'];
   return (
     <>
       <nav className="navbar">
@@ -23,7 +22,11 @@ function Layout() {
             <NavLink
               key={page}
               end
-              to={page === 'Home' ? '/' : `/${page.toLowerCase()}`}
+              to={
+                page === 'Home'
+                  ? '/'
+                  : `/${page.toLowerCase().replaceAll(' ', '-')}`
+              }
             >
               {page}
             </NavLink>
@@ -43,7 +46,7 @@ function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
-          <Route path="/recipes" element={<RecipeFinder />} />
+          <Route path="/grocery-list" element={<h1>Grocery List</h1>} />
           <Route path="/history" element={<History />} />
           <Route path="/favorites" element={<Favorites />} />
           <Route path="/login" element={<Login />} />
