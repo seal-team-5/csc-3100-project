@@ -9,10 +9,18 @@ import Home from './pages/Home';
 import History from './pages/History';
 import Login from './pages/Login';
 import Favorites from './pages/Favorites';
+import Settings from './pages/Settings';
 import './App.css';
 
 function Layout() {
-  const pages = ['Home', 'Grocery List', 'History', 'Favorites', 'Login'];
+  const pages = [
+    'Home',
+    'Grocery List',
+    'History',
+    'Favorites',
+    'Settings',
+    'Login',
+  ];
   return (
     <>
       <nav className="navbar">
@@ -49,6 +57,7 @@ function App() {
           <Route path="/grocery-list" element={<h1>Grocery List</h1>} />
           <Route path="/history" element={<History />} />
           <Route path="/favorites" element={<Favorites />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/login" element={<Login />} />
         </Route>
       </Routes>
