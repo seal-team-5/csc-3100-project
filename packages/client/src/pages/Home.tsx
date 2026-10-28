@@ -12,7 +12,6 @@ export default function Home() {
   const navigate = useNavigate();
   const [user, setUser] = useState<CurrentUser | null>(null);
   const [error, setError] = useState('');
-  const [inProgress, setInProgress] = useState<string[]>([]);
   useEffect(() => {
     const controller = new AbortController();
     fetch('/api/auth/me', { signal: controller.signal })
@@ -22,18 +21,6 @@ export default function Home() {
       .catch(() => {
         /* Guests can still view the home page. */
       });
-    
-      fetch('/api/recipe-progress')
-      .then(async (response) => {
-        if (!response.ok) return;
-        const data = await response.json();
-        setInProgress(
-          data.recipeProgress
-            .filter((item: { status: string }) => item.status === 'in-progress')
-            .map((item: { recipeName: string }) => item.recipeName)
-        );
-      })
-      .catch(() => {});
 
     return () => controller.abort();
   }, []);
@@ -49,25 +36,15 @@ export default function Home() {
   }
   return (
     <>
-      {inProgress.length > 0 && (
-        <section>
-          <h2>Recipes In Progress</h2>
-          <ul>
-            {inProgress.map((name) => (
-              <li key={name}>{name}</li>
-            ))}
-          </ul>
-        </section>
-      )}
-      
       {user && (
         <>
-          <p>Welcome, {user.username}.</p>
-          <button onClick={logout}>Sign out</button>
+          <button className="text-button sign-out-button" onClick={logout}>
+            Sign out
+          </button>
         </>
       )}
       {error && <p role="alert">{error}</p>}
-      <RecipeFinder />
+      <RecipeFinder username={user?.username} />
     </>
   );
 }
