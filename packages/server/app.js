@@ -271,6 +271,61 @@ export function createApp(options) {
     return res.sendStatus(204);
   });
 
+  app.get('/api/settings', async (req, res) => {
+    const user = await getAuthenticatedUser(req);
+    if (!user) return res.status(401).json({ error: 'Please log in.' });
+    return res.json({
+      settings: publicSettings(user),
+      username: user.username,
+      email: user.email,
+    });
+  });
+
+  app.put('/api/settings', async (req, res) => {
+    const user = await getAuthenticatedUser(req);
+    if (!user) return res.status(401).json({ error: 'Please log in.' });
+
+    const { username, servingSize, location, unitSystem, preferredFilters } =
+      req.body || {};
+
+    if (
+      !validText(username, 80) ||
+      !Number.isInteger(servingSize) ||
+      servingSize < 1 ||
+      servingSize > 20 ||
+      typeof location !== 'string' ||
+      location.length > 100 ||
+      !['us', 'metric'].includes(unitSystem) ||
+      !Array.isArray(preferredFilters) ||
+      preferredFilters.length > 50 ||
+      !preferredFilters.every(
+        (f) =>
+          f &&
+          typeof f.name === 'string' &&
+          f.name.length <= 60 &&
+          typeof f.type === 'string' &&
+          f.type.length <= 60
+      )
+    ) {
+      return res.status(400).json({ error: 'Invalid settings.' });
+    }
+
+    user.username = username.trim();
+    user.settings.servingSize = servingSize;
+    user.settings.location = location.trim();
+    user.settings.unitSystem = unitSystem;
+    user.settings.preferredFilters = preferredFilters.map(({ name, type }) => ({
+      name,
+      type,
+    }));
+    await user.save();
+
+    return res.json({
+      settings: publicSettings(user),
+      username: user.username,
+    });
+  });
+
   return finishServer(app, options);
 }
 
@@ -290,4 +345,17 @@ function validText(value, maxLength) {
 }
 function publicUser(user) {
   return { id: String(user._id), username: user.username, email: user.email };
+}
+
+function publicSettings(user) {
+  const s = user.settings || {};
+  return {
+    servingSize: s.servingSize ?? 2,
+    location: s.location ?? '',
+    unitSystem: s.unitSystem ?? 'us',
+    preferredFilters: (s.preferredFilters || []).map(({ name, type }) => ({
+      name,
+      type,
+    })),
+  };
 }

@@ -44,6 +44,22 @@ export default function RecipeFinder({ username }: { username?: string }) {
   }, []);
 
   useEffect(() => {
+    async function loadPreferredFilters() {
+      try {
+        const response = await fetch('/api/settings');
+        if (!response.ok) return; // guests or logged-out users: no preselection
+        const data = await response.json();
+        const saved: RecipeFilter[] = data.settings?.preferredFilters ?? [];
+        // Don't override anything the user already toggled while this loaded.
+        setSelectedFilters((current) => (current.length ? current : saved));
+      } catch {
+        /* preferences are optional */
+      }
+    }
+    void loadPreferredFilters();
+  }, []);
+
+  useEffect(() => {
     const controller = new AbortController();
     async function loadRecipes() {
       setLoading(true);
