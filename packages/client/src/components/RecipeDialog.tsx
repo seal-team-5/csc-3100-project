@@ -9,7 +9,7 @@ export default function RecipeDialog({
   onRegenerate,
   onProgress,
   favoriteIds = [],
-  onFavoritesChange,
+  onFavoritesChange = () => {},
 }: {
   result: RecipeResult;
   onClose: () => void;
@@ -294,7 +294,7 @@ export default function RecipeDialog({
                     onClick={() => void toggleFavorite()}
                     type="button"
                   >
-                    {isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
+                    {isFavorite ? 'Unfavorite' : 'Favorite'}
                   </button>
                 </div>
                 <p role="status" className="progress-message">
