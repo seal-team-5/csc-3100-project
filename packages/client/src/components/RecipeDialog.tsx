@@ -8,11 +8,15 @@ export default function RecipeDialog({
   onClose,
   onRegenerate,
   onProgress,
+  favoriteIds = [],
+  onFavoritesChange,
 }: {
   result: RecipeResult;
   onClose: () => void;
   onRegenerate: () => void;
   onProgress: (progress: RecipeProgress[]) => void;
+  favoriteIds?: string[];
+  onFavoritesChange: (favorites: string[]) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [loaded, setLoaded] = useState<{
@@ -28,6 +32,8 @@ export default function RecipeDialog({
     text: '',
   });
   const { id } = result.recipe;
+  const [savingFavorite, setSavingFavorite] = useState(false);
+  const isFavorite = favoriteIds.includes(id);
   const loading = loaded?.id !== id || loaded.retry !== retry;
   const detail = loading ? null : loaded.recipe;
   const error = loading ? '' : loaded.error;
@@ -114,6 +120,29 @@ export default function RecipeDialog({
       );
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function toggleFavorite() {
+    setSavingFavorite(true);
+
+    try {
+      const response = await fetch('/api/favorites', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ recipeId: id }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Could not update favorites.');
+      }
+
+      const data: { favorites: string[] } = await response.json();
+      onFavoritesChange(data.favorites);
+    } catch {
+      alert('Could not update favorites.');
+    } finally {
+      setSavingFavorite(false);
     }
   }
 
@@ -244,6 +273,14 @@ export default function RecipeDialog({
                     type="button"
                   >
                     Mark Completed
+                  </button>
+                  <button
+                    className="secondary-button"
+                    disabled={savingFavorite}
+                    onClick={() => void toggleFavorite()}
+                    type="button"
+                  >
+                    {isFavorite ? 'Remove from Favorites' : 'Add to Favorites'}
                   </button>
                 </div>
                 <p role="status" className="progress-message">

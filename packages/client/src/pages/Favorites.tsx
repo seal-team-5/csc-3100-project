@@ -1,76 +1,87 @@
-/* IIMPORTANT NOTE: when adding a favorite, store the recipe ID as a string:
-    user.favorites.push(String(recipe._id));   
-*/
 import { useEffect, useState } from 'react';
+import type { RecipeResult, RecipeSummary } from '../lib/recipes';
+import RecipeCard from '../components/RecipeCard';
+import RecipeDialog from '../components/RecipeDialog';
 
-type Recipe = {
-  _id: string;
-  Image: string;
-  Name: string;
+type UserData = {
+  favorites: string[];
 };
 
 export default function Favorites() {
-  const [favoriteRecipes, setFavoriteRecipes] = useState<Recipe[]>([]);
+  const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+  const [selectedRecipe, setSelectedRecipe] = useState<RecipeSummary | null>(
+    null
+  );
   const [message, setMessage] = useState('Loading favorites...');
 
   useEffect(() => {
-    async function getFavorites() {
+    async function loadFavorites() {
       try {
-        // get the user's saved recipe IDs
-        // & fetch every recipe from the database
         const userResponse = await fetch('/api/user');
         const recipesResponse = await fetch('/api/recipes');
 
         if (!userResponse.ok || !recipesResponse.ok) {
-          throw new Error('Request failed');
+          throw new Error('Could not load favorites.');
         }
 
-        const userData = await userResponse.json();
-        const recipesData = await recipesResponse.json();
+        const userData: { user: UserData } = await userResponse.json();
+        const recipeData: { recipes: RecipeSummary[] } =
+          await recipesResponse.json();
 
-        const user = userData.user || userData;
-
-        const recipes = recipesData.recipes || recipesData;
-
-        // keep onlys recipes whose ID is in the user's favorites array
-        const savedRecipes = recipes.filter((recipe: Recipe) => {
-          return user.favorites.includes(String(recipe._id));
-        });
-
-        setFavoriteRecipes(savedRecipes);
+        setFavoriteIds(userData.user.favorites);
+        setRecipes(recipeData.recipes);
         setMessage('');
       } catch {
         setMessage('Could not load favorite recipes.');
       }
     }
 
-    getFavorites();
+    void loadFavorites();
   }, []);
 
+  const favoriteRecipes = recipes.filter((recipe) =>
+    favoriteIds.includes(recipe.id)
+  );
+
+  const dialogResult: RecipeResult | null = selectedRecipe
+    ? {
+        recipe: selectedRecipe,
+        exactMatch: true,
+        changedFilters: [],
+      }
+    : null;
+
   return (
-    <section>
-      <h1>Favorites</h1>
+    <section className="favorites-page">
+      <h1>Favorite Recipes</h1>
 
       {message && <p>{message}</p>}
 
       {!message && favoriteRecipes.length === 0 && (
-        <p>You haven't saved any recipes yet!</p>
+        <p>You have not saved any recipes yet.</p>
       )}
 
-      <ul>
+      <div className="recipe-grid">
         {favoriteRecipes.map((recipe) => (
-          <li key={recipe._id}>
-            {/*
-              TO DO: REPLACE THIS WITH THE RECIPECARD COMPONENT WHEN IT IS COMPL:ETED
-
-              <RecipeCard recipe={recipe} />
-            */}
-
-            <img src={recipe.Image} alt="" />
-            <h2>{recipe.Name}</h2>
-          </li>
+          <RecipeCard
+            key={recipe.id}
+            recipe={recipe}
+            onOpen={setSelectedRecipe}
+          />
         ))}
-      </ul>
+      </div>
+
+      {dialogResult && (
+        <RecipeDialog
+          result={dialogResult}
+          onClose={() => setSelectedRecipe(null)}
+          onRegenerate={() => setSelectedRecipe(null)}
+          onProgress={() => {}}
+          favoriteIds={favoriteIds}
+          onFavoritesChange={setFavoriteIds}
+        />
+      )}
     </section>
   );
 }
