@@ -125,22 +125,36 @@ export default function RecipeDialog({
 
   async function toggleFavorite() {
     setSavingFavorite(true);
+    setProgressMessage('');
 
     try {
       const response = await fetch('/api/favorites', {
         method: 'POST',
+        credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ recipeId: id }),
       });
 
       if (!response.ok) {
-        throw new Error('Could not update favorites.');
+        throw new Error(
+          response.status === 401 || response.status === 403
+            ? 'Please log in to save favorite recipes.'
+            : 'Could not update favorites. Please try again.'
+        );
       }
 
       const data: { favorites: string[] } = await response.json();
       onFavoritesChange(data.favorites);
-    } catch {
-      alert('Could not update favorites.');
+
+      setProgressMessage(
+        isFavorite
+          ? 'Recipe removed from favorites.'
+          : 'Recipe saved to favorites.'
+      );
+    } catch (cause) {
+      setProgressMessage(
+        cause instanceof Error ? cause.message : 'Could not update favorites.'
+      );
     } finally {
       setSavingFavorite(false);
     }
