@@ -9,8 +9,8 @@ import Home from './pages/Home';
 import History from './pages/History';
 import RecipeFinder from './pages/RecipeFinder';
 import Login from './pages/Login';
+import Favorites from './pages/Favorites';
 import './App.css';
-
 
 function Layout() {
   const pages = ['Home', 'Recipes', 'History', 'Favorites', 'Login'];
@@ -45,7 +45,7 @@ function App() {
           <Route path="/" element={<Home />} />
           <Route path="/recipes" element={<RecipeFinder />} />
           <Route path="/history" element={<History />} />
-          <Route path="/favorites" element={<h1>Favorites</h1>} />
+          <Route path="/favorites" element={<Favorites />} />
           <Route path="/login" element={<Login />} />
         </Route>
       </Routes>
