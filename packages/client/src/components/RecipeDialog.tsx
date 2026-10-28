@@ -97,7 +97,7 @@ export default function RecipeDialog({
       const response = await fetch('/api/recipe-progress', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipeName: detail.name, status }),
+        body: JSON.stringify({ recipeId: id, recipeName: detail.name, status }),
       });
       if (!response.ok)
         throw new Error(
@@ -268,7 +268,7 @@ export default function RecipeDialog({
                 </ol>
               </section>
               <section className="recipe-detail-section">
-                <RecipeReview key={id} recipeName={detail.name} />
+                <RecipeReview key={id} recipeId={id} recipeName={detail.name} />
               </section>
               <section className="recipe-detail-section">
                 <div className="recipe-progress-actions">

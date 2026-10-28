@@ -15,6 +15,7 @@ export type RecipeResult = {
   changedFilters: RecipeFilter[];
 };
 export type RecipeProgress = {
+  recipeId?: string;
   recipeName: string;
   status: 'in-progress' | 'completed';
 };

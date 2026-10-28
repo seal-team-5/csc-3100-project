@@ -7,6 +7,7 @@ import mongoose, { Schema } from 'mongoose';
 
 /* Ensure that both the type and schema are updated together! */
 export type RecipeProgress = {
+  recipeId?: mongoose.Types.ObjectId;
   recipeName: string;
   status: 'in-progress' | 'completed';
   startedAt: Date;
@@ -70,6 +71,7 @@ const userSchema = new Schema<User>(
     recipeProgress: {
       type: [
         {
+          recipeId: { type: Schema.Types.ObjectId, ref: 'Recipe' },
           recipeName: { type: String, required: true },
           status: {
             type: String,

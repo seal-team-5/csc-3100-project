@@ -24,7 +24,8 @@
     "lint": "npx eslint .",
     "start": "node --env-file=.env packages/server/index.js",
     "dev": "node --watch --env-file=.env packages/server/index.js",
-    "dev:demo": "node packages/server/demo.js"
+    "dev:demo": "node packages/server/demo.js",
+    "test:reviews:db": "node --env-file=.env --test packages/server/integration/reviews.test.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
