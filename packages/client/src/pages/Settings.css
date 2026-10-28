@@ -1,0 +1,36 @@
+.settings-page {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 1.5rem;
+}
+.settings-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+.settings-card {
+  margin: 1rem 0;
+}
+.settings-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0.75rem 0;
+}
+.settings-field input,
+.settings-field select {
+  padding: 0.5rem;
+  max-width: 420px;
+}
+.settings-filter-group {
+  border: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+.settings-filter-options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

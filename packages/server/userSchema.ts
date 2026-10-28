@@ -13,6 +13,11 @@ export type RecipeProgress = {
   completedAt?: Date;
 };
 
+export type SavedFilter = {
+  name: string;
+  type: string;
+};
+
 export type User = {
   username: string;
   email: string;
@@ -20,7 +25,10 @@ export type User = {
   favorites: string[]; /* array of recipe IDs */
   recipeProgress: RecipeProgress[];
   settings: {
-    evilSetting: boolean;
+    servingSize: number;
+    location: string;
+    unitSystem: 'us' | 'metric';
+    preferredFilters: SavedFilter[];
   };
 };
 
@@ -42,9 +50,21 @@ const userSchema = new Schema<User>(
       // Routes hash passwords before saving; reject accidental plaintext writes.
       match: /^\$2[ab]\$12\$[./A-Za-z0-9]{53}$/,
     },
+
     favorites: { type: [String], default: [] },
     settings: {
-      evilSetting: { type: Boolean, default: false },
+      servingSize: { type: Number, default: 2, min: 1, max: 20 },
+      location: { type: String, default: '', trim: true, maxlength: 100 },
+      unitSystem: { type: String, enum: ['us', 'metric'], default: 'us' },
+      preferredFilters: {
+        type: [
+          {
+            name: { type: String, maxlength: 60 },
+            type: { type: String, maxlength: 60 },
+          },
+        ],
+        default: [],
+      },
     },
 
     recipeProgress: {

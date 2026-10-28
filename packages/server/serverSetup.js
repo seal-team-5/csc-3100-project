@@ -87,7 +87,7 @@ export function finishServer(app, { clientDirectory = publicDirectory } = {}) {
   );
   app.use(express.static(clientDirectory));
   app.get(
-    ['/', '/login', '/grocery-list', '/history', '/favorites'],
+    ['/', '/login', '/grocery-list', '/history', '/favorites', '/settings'],
     (_req, res) => {
       res.sendFile('index.html', { root: clientDirectory });
     }
