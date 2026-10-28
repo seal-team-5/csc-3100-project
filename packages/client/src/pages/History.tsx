@@ -1,6 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import RecipeReview from './RecipeReview';
 
-type RecipeProgress = {
+type HistoryEntry = {
+  recipeId?: string;
   recipeName: string;
   status: 'in-progress' | 'completed';
   startedAt: string;
@@ -8,62 +10,156 @@ type RecipeProgress = {
 };
 
 export default function History() {
-  const [history, setHistory] = useState<RecipeProgress[]>([]);
+  const reviewPanel = useRef<HTMLElement>(null);
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [attempt, setAttempt] = useState(0);
+  const [today] = useState(() => new Date());
+  const [selected, setSelected] = useState<{ id: string; name: string } | null>(
+    null
+  );
 
   useEffect(() => {
-    fetch('/api/recipe-progress')
+    const controller = new AbortController();
+    fetch('/api/recipe-progress', {
+      signal: controller.signal,
+      cache: 'no-store',
+    })
       .then(async (response) => {
-        if (!response.ok) {
-          throw new Error('Please log in to view your history.');
+        const result = await response.json();
+        if (!response.ok)
+          throw new Error(
+            response.status === 401
+              ? 'Please log in to view your history.'
+              : result.error || 'Unable to load history.'
+          );
+        if (!controller.signal.aborted) {
+          setHistory(result.recipeProgress);
+          setError('');
         }
-        const data = await response.json();
-        setHistory(data.recipeProgress);
       })
-      .catch((err) => setError(err.message));
-  }, []);
+      .catch((error) => {
+        if (!controller.signal.aborted)
+          setError(
+            error instanceof Error ? error.message : 'Unable to load history.'
+          );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
+  }, [attempt]);
 
-  const completed = history.filter((item) => item.status === 'completed');
+  // Keep the opened form visible, including in a long history list.
+  useEffect(() => {
+    if (!selected) return;
+    reviewPanel.current?.focus({ preventScroll: true });
+    reviewPanel.current?.scrollIntoView({ block: 'nearest' });
+  }, [selected]);
 
-  const groups = {
-    Today: completed.filter(
-      (item) =>
-        item.completedAt &&
-        new Date(item.completedAt).toDateString() === new Date().toDateString()
-    ),
-    'Earlier this week': completed.filter((item) => {
-      if (!item.completedAt) return false;
-      const date = new Date(item.completedAt);
-      const daysAgo = (Date.now() - date.getTime()) / (1000 * 60 * 60 * 24);
-      return daysAgo >= 1 && daysAgo < 7;
-    }),
-    Older: completed.filter((item) => {
-      if (!item.completedAt) return false;
-      const daysAgo =
-        (Date.now() - new Date(item.completedAt).getTime()) /
-        (1000 * 60 * 60 * 24);
-      return daysAgo >= 7;
-    }),
+  const groups: Record<string, HistoryEntry[]> = {
+    Today: [],
+    'Earlier this week': [],
+    Older: [],
   };
+  for (const entry of history.filter((item) => item.status === 'completed')) {
+    const completed = entry.completedAt ? new Date(entry.completedAt) : null;
+    if (!completed || Number.isNaN(completed.getTime())) {
+      groups.Older.push(entry);
+      continue;
+    }
+    const daysAgo = (today.getTime() - completed.getTime()) / 86400000;
+    const group =
+      completed.toDateString() === today.toDateString()
+        ? 'Today'
+        : daysAgo >= 0 && daysAgo < 7
+          ? 'Earlier this week'
+          : 'Older';
+    groups[group].push(entry);
+  }
 
   return (
     <section>
       <h1>Recipe History</h1>
-      {error && <p role="alert">{error}</p>}
-      {Object.entries(groups).map(([title, recipes]) => (
-        <section key={title}>
-          <h2>{title}</h2>
-          {recipes.length === 0 ? (
-            <p>No completed recipes.</p>
-          ) : (
-            <ul>
-              {recipes.map((item, index) => (
-                <li key={`${item.recipeName}-${index}`}>{item.recipeName}</li>
-              ))}
-            </ul>
-          )}
-        </section>
-      ))}
+      {loading && <p role="status">Loading history…</p>}
+      {error && (
+        <div role="alert">
+          <p>{error}</p>
+          <button
+            type="button"
+            onClick={() => {
+              setLoading(true);
+              setAttempt((value) => value + 1);
+            }}
+          >
+            Retry history
+          </button>
+        </div>
+      )}
+      {!loading &&
+        !error &&
+        Object.entries(groups).map(([title, recipes]) => (
+          <section key={title}>
+            <h2>{title}</h2>
+            {recipes.length === 0 ? (
+              <p>No completed recipes.</p>
+            ) : (
+              <ul>
+                {recipes.map((item, index) => (
+                  <li
+                    className="history-recipe"
+                    key={`${item.recipeId || item.recipeName}-${index}`}
+                  >
+                    <span>{item.recipeName}</span>
+                    {item.recipeId ? (
+                      <button
+                        className="secondary-button"
+                        type="button"
+                        onClick={() =>
+                          setSelected({
+                            id: item.recipeId!,
+                            name: item.recipeName,
+                          })
+                        }
+                      >
+                        Review recipe
+                      </button>
+                    ) : (
+                      <p>
+                        This recipe is no longer available or cannot be
+                        identified uniquely.
+                      </p>
+                    )}
+                    {selected && selected.id === item.recipeId && (
+                      <section
+                        ref={reviewPanel}
+                        tabIndex={-1}
+                        className="history-review"
+                        aria-label="Review a past recipe"
+                      >
+                        <button
+                          type="button"
+                          className="text-button"
+                          onClick={() => setSelected(null)}
+                        >
+                          Close review
+                        </button>
+                        <h2>{selected.name}</h2>
+                        <RecipeReview
+                          initiallyOpen
+                          key={selected.id}
+                          recipeId={selected.id}
+                          recipeName={selected.name}
+                        />
+                      </section>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        ))}
     </section>
   );
 }

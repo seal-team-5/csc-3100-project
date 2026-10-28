@@ -140,50 +140,79 @@ export function createApp(options) {
 
   app.get('/api/recipe-progress', async (req, res) => {
     const user = await getAuthenticatedUser(req);
-    if (!user) return res.status(401).json({ error: 'Unauthorized' });
-    res.set('Cache-Control', 'no-store');
-    res.json({ recipeProgress: user.recipeProgress || [] });
+    if (!user) return res.status(401).json({ error: 'Please log in.' });
+    const progress = user.recipeProgress || [];
+    const legacyNames = [
+      ...new Set(
+        progress.filter((item) => !item.recipeId).map((item) => item.recipeName)
+      ),
+    ];
+    // Resolve old history without rewriting the user's data. Do not guess if names collide.
+    const recipes = legacyNames.length
+      ? await Recipe.find({ Name: { $in: legacyNames } })
+          .select('_id Name')
+          .lean()
+      : [];
+    const recipeProgress = progress.map((item) => {
+      const entry = item.toObject ? item.toObject() : { ...item };
+      if (item.recipeId) return { ...entry, recipeId: String(item.recipeId) };
+      const matches = recipes.filter(
+        (recipe) => recipe.Name === item.recipeName
+      );
+      return {
+        ...entry,
+        ...(matches.length === 1 ? { recipeId: String(matches[0]._id) } : {}),
+      };
+    });
+    return res.json({ recipeProgress });
   });
 
   app.post('/api/recipe-progress', async (req, res) => {
     const user = await getAuthenticatedUser(req);
-    if (!user) return res.status(401).json({ error: 'Unauthorized' });
-
-    const { recipeName, status } = req.body || {};
-    if (
-      typeof recipeName !== 'string' ||
-      !recipeName.trim() ||
-      !['in-progress', 'completed'].includes(status)
-    ) {
-      return res.status(400).json({ error: 'Invalid recipe progress' });
+    if (!user) return res.status(401).json({ error: 'Please log in.' });
+    const { recipeId, recipeName, status } = req.body || {};
+    if (!['in-progress', 'completed'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid recipe progress.' });
     }
-
-    const recipe = await Recipe.findOne({ Name: recipeName.trim() });
-    if (!recipe) return res.status(404).json({ error: 'Recipe not found' });
-
+    if (
+      recipeId !== undefined &&
+      (typeof recipeId !== 'string' || !/^[a-f\d]{24}$/i.test(recipeId))
+    ) {
+      return res.status(400).json({ error: 'Invalid recipe ID.' });
+    }
+    if (!recipeId && (typeof recipeName !== 'string' || !recipeName.trim())) {
+      return res
+        .status(400)
+        .json({ error: 'A recipe ID or name is required.' });
+    }
+    const recipe = recipeId
+      ? await Recipe.findById(recipeId)
+      : await Recipe.findOne({ Name: recipeName.trim() });
+    if (!recipe) return res.status(404).json({ error: 'Recipe not found.' });
     const now = new Date();
-    const existing = user.recipeProgress.find(
-      (item) => item.recipeName === recipe.Name
+    user.recipeProgress ||= [];
+    const existing = user.recipeProgress.find((item) =>
+      item.recipeId
+        ? String(item.recipeId) === String(recipe._id)
+        : item.recipeName === recipe.Name
     );
-
     if (existing) {
+      existing.recipeId = recipe._id;
+      existing.recipeName = recipe.Name;
       existing.status = status;
-      if (status === 'completed') existing.completedAt = now;
-      else existing.completedAt = undefined;
+      existing.completedAt = status === 'completed' ? now : undefined;
     } else {
       user.recipeProgress.push({
+        recipeId: recipe._id,
         recipeName: recipe.Name,
         status,
         startedAt: now,
         ...(status === 'completed' ? { completedAt: now } : {}),
       });
     }
-
     await user.save();
-    res.set('Cache-Control', 'no-store');
-    res.json({ recipeProgress: user.recipeProgress });
+    return res.json({ recipeProgress: user.recipeProgress });
   });
-
   // 1. Register: validate input, hash the password, then save the user.
   app.post('/api/auth/register', registerLimiter, async (req, res) => {
     const { username, phone, password } = req.body || {};
@@ -271,6 +300,99 @@ export function createApp(options) {
     return res.sendStatus(204);
   });
 
+  app.put('/api/recipes/:id/reviews', async (req, res) => {
+    const user = await getAuthenticatedUser(req);
+    if (!user) return res.status(401).json({ error: 'Please log in.' });
+    const recipeId = req.params.id;
+    if (!/^[a-f\d]{24}$/i.test(recipeId)) {
+      return res.status(400).json({ error: 'Invalid recipe ID.' });
+    }
+    const { rating, note = '' } = req.body || {};
+    if (!Number.isInteger(rating) || rating < 1 || rating > 5) {
+      return res
+        .status(400)
+        .json({ error: 'Rating must be a whole number from 1 to 5.' });
+    }
+    if (typeof note !== 'string' || note.length > 2000) {
+      return res
+        .status(400)
+        .json({
+          error: 'Review note must be text with at most 2000 characters.',
+        });
+    }
+
+    // Optimistic concurrency prevents simultaneous saves from dropping other reviews.
+    // Reload and retry when another request saved the recipe first.
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const recipe = await Recipe.findById(recipeId);
+      if (!recipe) return res.status(404).json({ error: 'Recipe not found.' });
+      recipe.Reviews ||= [];
+      const existing = recipe.Reviews.find(
+        (review) => String(review.userId) === String(user._id)
+      );
+      if (existing) {
+        existing.rating = rating;
+        existing.note = note.trim();
+      } else {
+        recipe.Reviews.push({
+          userId: user._id,
+          rating,
+          note: note.trim(),
+          createdAt: new Date(),
+        });
+      }
+      try {
+        await recipe.save();
+        return res.json({ message: 'Review saved.' });
+      } catch (error) {
+        if (error.name !== 'VersionError') throw error;
+      }
+    }
+    return res
+      .status(409)
+      .json({
+        error:
+          'Another review was saved at the same time. Please submit again.',
+      });
+  });
+
+  app.get('/api/recipes/:id/reviews', async (req, res) => {
+    const recipeId = req.params.id;
+    if (!/^[a-f\d]{24}$/i.test(recipeId)) {
+      return res.status(400).json({ error: 'Invalid recipe ID.' });
+    }
+    const viewer = await getAuthenticatedUser(req);
+    const recipe = await Recipe.findById(recipeId)
+      .select('Reviews')
+      .populate('Reviews.userId', 'username')
+      .lean();
+    if (!recipe) return res.status(404).json({ error: 'Recipe not found.' });
+    // Return public usernames only, never account emails or password hashes.
+    const reviews = (recipe.Reviews || [])
+      .map((review) => ({
+        username: review.userId?.username || 'Deleted user',
+        rating: review.rating,
+        note: review.note,
+        createdAt: review.createdAt,
+        isOwn: Boolean(
+          viewer &&
+          review.userId &&
+          String(review.userId._id) === String(viewer._id)
+        ),
+      }))
+      .sort(
+        (left, right) => new Date(right.createdAt) - new Date(left.createdAt)
+      );
+    const reviewCount = reviews.length;
+    const total = reviews.reduce((sum, review) => sum + review.rating, 0);
+    return res.json({
+      reviews,
+      reviewCount,
+      averageRating: reviewCount
+        ? Number((total / reviewCount).toFixed(1))
+        : null,
+    });
+  });
   return finishServer(app, options);
 }
 

@@ -57,3 +57,41 @@
   margin-left: 8px;
   font-weight: 700;
 }
+
+.review-average {
+  font-weight: 700;
+}
+.review-list {
+  list-style: none;
+  padding: 0;
+}
+.review-list li {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--recipe-border, #ddd);
+}
+.review-list p {
+  margin: 6px 0;
+}
+.review-note {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.review-list time {
+  font-size: 12px;
+  color: #606875;
+}
+.review-form [role='alert'] {
+  color: #a42323;
+}
+.history-review {
+  margin-top: 16px;
+  padding: 16px;
+  border: 1px solid var(--recipe-border, #ddd);
+  border-radius: 8px;
+}
+.history-recipe {
+  margin-bottom: 12px;
+}
+.history-recipe > button {
+  margin-left: 12px;
+}

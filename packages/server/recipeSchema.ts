@@ -10,13 +10,52 @@ export type Filter = {
   type: string;
 };
 
+export type Review = {
+  userId: mongoose.Types.ObjectId;
+  rating: number;
+  note: string;
+  createdAt: Date;
+};
+
 export type Recipe = {
   Image: string;
   Name: string;
   Ingredients: string[];
   Instructions: string[];
   Filters: Filter[];
+  Reviews: Review[];
 };
+
+const reviewSchema = new Schema<Review>(
+  {
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+    rating: {
+      type: Number,
+      required: true,
+      min: 1,
+      max: 5,
+      validate: {
+        validator: Number.isInteger,
+        message: 'Rating must be a whole number.',
+      },
+    },
+    note: {
+      type: String,
+      trim: true,
+      maxlength: 2000,
+      default: '',
+    },
+    createdAt: {
+      type: Date,
+      default: Date.now,
+    },
+  },
+  { _id: false }
+);
 
 const recipeSchema = new Schema<Recipe>(
   {
@@ -44,8 +83,13 @@ const recipeSchema = new Schema<Recipe>(
       type: [{ name: String, type: { type: String } }],
       required: true,
     },
+    Reviews: {
+      type: [reviewSchema],
+      default: [],
+    },
   },
-  { collection: 'recipes' }
+  { collection: 'recipes', optimisticConcurrency: true }
 );
 
-export default mongoose.models.Recipe || mongoose.model<Recipe>('Recipe', recipeSchema);
+export default mongoose.models.Recipe ||
+  mongoose.model<Recipe>('Recipe', recipeSchema);
