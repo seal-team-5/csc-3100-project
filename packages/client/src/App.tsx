@@ -1,18 +1,3 @@
-<<<<<<< HEAD
-import { BrowserRouter, Routes, Route, Link } from 'react-router-dom';
-import './App.css';
-import Settings from './Settings';
-
-function App() {
-  const pages = [
-    'Home',
-    'Recipes',
-    'History',
-    'Favorites',
-    'Settings',
-    'Login',
-  ];
-=======
 import {
   BrowserRouter,
   Routes,
@@ -24,11 +9,18 @@ import Home from './pages/Home';
 import History from './pages/History';
 import Login from './pages/Login';
 import Favorites from './pages/Favorites';
+import Settings from './pages/Settings';
 import './App.css';
->>>>>>> b18e52ee059423093607213eca9024c3e8c20c6c
 
 function Layout() {
-  const pages = ['Home', 'Grocery List', 'History', 'Favorites', 'Login'];
+  const pages = [
+    'Home',
+    'Grocery List',
+    'History',
+    'Favorites',
+    'Settings',
+    'Login',
+  ];
   return (
     <>
       <nav className="navbar">
@@ -37,37 +29,20 @@ function Layout() {
           {pages.map((page) => (
             <NavLink
               key={page}
-<<<<<<< HEAD
-              to={page === 'Home' ? '/' : `/${page.toLowerCase()}`}
-=======
               end
               to={
                 page === 'Home'
                   ? '/'
                   : `/${page.toLowerCase().replaceAll(' ', '-')}`
               }
->>>>>>> b18e52ee059423093607213eca9024c3e8c20c6c
             >
               {page}
             </NavLink>
           ))}
         </div>
       </nav>
-<<<<<<< HEAD
-
-      <main>
-        <Routes>
-          <Route path="/" element={<h1>Home</h1>} />
-          <Route path="/recipes" element={<h1>Recipes</h1>} />
-          <Route path="/history" element={<h1>History</h1>} />
-          <Route path="/favorites" element={<h1>Favorites</h1>} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/login" element={<h1>Login</h1>} />
-        </Routes>
-=======
       <main className="app-content">
         <Outlet />
->>>>>>> b18e52ee059423093607213eca9024c3e8c20c6c
       </main>
     </>
   );
@@ -82,6 +57,7 @@ function App() {
           <Route path="/grocery-list" element={<h1>Grocery List</h1>} />
           <Route path="/history" element={<History />} />
           <Route path="/favorites" element={<Favorites />} />
+          <Route path="/settings" element={<Settings />} />
           <Route path="/login" element={<Login />} />
         </Route>
       </Routes>
