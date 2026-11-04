@@ -1,5 +1,15 @@
 import { useEffect, useRef, useState } from 'react';
 import RecipeReview from './RecipeReview';
+import RecipeCard from '../components/RecipeCard';
+import RecipeDialog from '../components/RecipeDialog';
+import type { RecipeSummary } from '../lib/recipes';
+
+type GeneratedRecipe = {
+  recipeId: string;
+  recipeName: string;
+  image: string;
+  generatedAt: string;
+};
 
 type HistoryEntry = {
   recipeId?: string;
@@ -10,6 +20,14 @@ type HistoryEntry = {
 };
 
 export default function History() {
+  const suggestionGrid = useRef<HTMLDivElement>(null);
+  const [suggestionsExpanded, setSuggestionsExpanded] = useState(false);
+  const [suggestionsPerRow, setSuggestionsPerRow] = useState(1);
+  const [generated, setGenerated] = useState<GeneratedRecipe[]>([]);
+  const [openedRecipe, setOpenedRecipe] = useState<RecipeSummary | null>(null);
+  const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+  const [generatedError, setGeneratedError] = useState('');
+  const [generatedLoading, setGeneratedLoading] = useState(true);
   const reviewPanel = useRef<HTMLElement>(null);
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [error, setError] = useState('');
@@ -51,6 +69,63 @@ export default function History() {
     return () => controller.abort();
   }, [attempt]);
 
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/recipe-history', {
+      signal: controller.signal,
+      cache: 'no-store',
+    })
+      .then(async (response) => {
+        if (!response.ok)
+          throw new Error(
+            response.status === 401
+              ? 'Please log in to view generated recipes.'
+              : 'Unable to load generated recipes.'
+          );
+        const data = await response.json();
+        if (!controller.signal.aborted) {
+          setGenerated(data.generatedRecipes);
+          setGeneratedError('');
+        }
+      })
+      .catch((error) => {
+        if (!controller.signal.aborted)
+          setGeneratedError(
+            error instanceof Error
+              ? error.message
+              : 'Unable to load generated recipes.'
+          );
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setGeneratedLoading(false);
+      });
+    fetch('/api/user', { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!controller.signal.aborted)
+          setFavoriteIds(data.user.favorites || []);
+      })
+      .catch(() => {});
+    return () => controller.abort();
+  }, [attempt]);
+
+  // Match the collapsed list to one row at the current screen width.
+  useEffect(() => {
+    const grid = suggestionGrid.current;
+    if (!grid) return;
+    const updateRowSize = () => {
+      const columns = getComputedStyle(grid).gridTemplateColumns;
+      setSuggestionsPerRow(
+        columns === 'none' ? 1 : columns.split(/\s+/).length
+      );
+    };
+    const observer = new ResizeObserver(updateRowSize);
+    observer.observe(grid);
+    updateRowSize();
+    return () => observer.disconnect();
+  }, [generatedLoading, generatedError, generated.length]);
+
   // Keep the opened form visible, including in a long history list.
   useEffect(() => {
     if (!selected) return;
@@ -82,6 +157,22 @@ export default function History() {
   return (
     <section>
       <h1>Recipe History</h1>
+      {openedRecipe && (
+        <RecipeDialog
+          result={{
+            recipe: openedRecipe,
+            exactMatch: true,
+            changedFilters: [],
+          }}
+          onClose={() => setOpenedRecipe(null)}
+          onRegenerate={() => setOpenedRecipe(null)}
+          onProgress={setHistory}
+          favoriteIds={favoriteIds}
+          onFavoritesChange={setFavoriteIds}
+          showRegenerate={false}
+        />
+      )}
+      <h2>Completed recipes</h2>
       {loading && <p role="status">Loading history…</p>}
       {error && (
         <div role="alert">
@@ -160,6 +251,73 @@ export default function History() {
             )}
           </section>
         ))}
+      <section
+        className="recipe-section"
+        aria-labelledby="generated-recipes-heading"
+      >
+        <h2 id="generated-recipes-heading">Previously generated recipes</h2>
+        <p>Your latest 100 recipe suggestions, newest first.</p>
+        {generatedLoading && <p role="status">Loading generated recipes…</p>}
+        {generatedError && (
+          <div role="alert">
+            <p>{generatedError}</p>
+            <button
+              type="button"
+              onClick={() => {
+                setGeneratedLoading(true);
+                setAttempt((value) => value + 1);
+              }}
+            >
+              Retry generated recipes
+            </button>
+          </div>
+        )}
+        {!generatedLoading &&
+          !generatedError &&
+          (generated.length ? (
+            <>
+              <div
+                className="recipe-grid"
+                id="generated-recipe-list"
+                ref={suggestionGrid}
+              >
+                {(suggestionsExpanded
+                  ? generated
+                  : generated.slice(0, suggestionsPerRow)
+                ).map((item, index) => (
+                  <RecipeCard
+                    key={item.recipeId + '-' + index}
+                    recipe={{
+                      id: item.recipeId,
+                      name: item.recipeName,
+                      image: item.image,
+                      filters: [],
+                    }}
+                    onOpen={setOpenedRecipe}
+                  />
+                ))}
+              </div>
+              {generated.length > suggestionsPerRow && (
+                <button
+                  className="secondary-button history-suggestions-toggle"
+                  type="button"
+                  aria-expanded={suggestionsExpanded}
+                  aria-controls="generated-recipe-list"
+                  onClick={() => setSuggestionsExpanded((value) => !value)}
+                >
+                  {suggestionsExpanded
+                    ? 'Show fewer recipes'
+                    : 'Show all recipe suggestions'}
+                </button>
+              )}
+            </>
+          ) : (
+            <p>
+              No generated recipes yet. Choose “Show me a recipe!” on Home to
+              get started.
+            </p>
+          ))}
+      </section>
     </section>
   );
 }

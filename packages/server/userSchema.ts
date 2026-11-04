@@ -25,6 +25,12 @@ export type User = {
   password: string; /* bcrypt hash; never a plaintext password */
   favorites: string[]; /* array of recipe IDs */
   recipeProgress: RecipeProgress[];
+  generatedRecipes: {
+    recipeId: mongoose.Types.ObjectId;
+    recipeName: string;
+    image: string;
+    generatedAt: Date;
+  }[];
   settings: {
     servingSize: number;
     location: string;
@@ -68,6 +74,21 @@ const userSchema = new Schema<User>(
       },
     },
 
+    generatedRecipes: {
+      type: [
+        {
+          recipeId: {
+            type: Schema.Types.ObjectId,
+            ref: 'Recipe',
+            required: true,
+          },
+          recipeName: { type: String, required: true },
+          image: { type: String, default: '' },
+          generatedAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
     recipeProgress: {
       type: [
         {
