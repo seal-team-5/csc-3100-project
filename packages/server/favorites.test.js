@@ -92,6 +92,8 @@ async function fixture(t) {
   return { request, login, toggle, users, saves };
 }
 
+// GET TESTS //
+
 test('GET /api/user requires login', async (t) => {
   const { request } = await fixture(t);
   const response = await request('/api/user');
@@ -129,4 +131,91 @@ test('GET /api/user treats a missing favorites field as empty', async (t) => {
   const cookie = await login();
   const { user } = await (await request('/api/user', { cookie })).json();
   assert.deepEqual(user.favorites, []);
+});
+
+// POST TESTS //
+
+test('POST /api/favorites requires login', async (t) => {
+  const { toggle, saves } = await fixture(t);
+  const response = await toggle(undefined, recipeA);
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), { error: 'Please log in.' });
+  assert.equal(saves.count, 0);
+});
+
+test('POST /api/favorites adds a recipe, then removes it on repeat', async (t) => {
+  const { toggle, login, saves, users } = await fixture(t);
+  const cookie = await login();
+
+  const added = await toggle(cookie, recipeA);
+  assert.equal(added.status, 200);
+  assert.equal(added.headers.get('cache-control'), 'no-store');
+  assert.deepEqual(await added.json(), { favorites: [recipeA] });
+  assert.deepEqual(users.get('1').favorites, [recipeA]);
+  assert.equal(saves.count, 1);
+
+  const removed = await toggle(cookie, recipeA);
+  assert.equal(removed.status, 200);
+  assert.deepEqual(await removed.json(), { favorites: [] });
+  assert.deepEqual(users.get('1').favorites, []);
+  assert.equal(saves.count, 2);
+});
+
+test('POST /api/favorites keeps other favorites when removing one', async (t) => {
+  const { toggle, login } = await fixture(t);
+  const cookie = await login();
+  await toggle(cookie, recipeA);
+  const both = await (await toggle(cookie, recipeB)).json();
+  assert.deepEqual(both.favorites, [recipeA, recipeB]);
+  const afterRemove = await (await toggle(cookie, recipeA)).json();
+  assert.deepEqual(afterRemove.favorites, [recipeB]);
+});
+
+test('POST /api/favorites rejects invalid recipe IDs', async (t) => {
+  const { request, toggle, login, saves } = await fixture(t);
+  const cookie = await login();
+  const invalidIds = [
+    undefined,
+    null,
+    123,
+    '',
+    'short',
+    recipeA.slice(1), // 23 characters
+    recipeA + '0', // 25 characters
+    'z'.repeat(24), // right length, not hex
+    { $ne: null },
+    [recipeA],
+  ];
+  for (const recipeId of invalidIds) {
+    const response = await toggle(cookie, recipeId);
+    assert.equal(response.status, 400, `expected 400 for ${String(recipeId)}`);
+    assert.deepEqual(await response.json(), { error: 'Invalid recipe ID.' });
+  }
+  // No body at all
+  const noBody = await request('/api/favorites', { method: 'POST', cookie });
+  assert.equal(noBody.status, 400);
+  assert.equal(saves.count, 0);
+});
+
+test('POST /api/favorites returns 404 for an unknown recipe', async (t) => {
+  const { toggle, login, saves, users } = await fixture(t);
+  const cookie = await login();
+  const response = await toggle(cookie, missingRecipe);
+  assert.equal(response.status, 404);
+  assert.deepEqual(await response.json(), { error: 'Recipe not found.' });
+  assert.deepEqual(users.get('1').favorites, []);
+  assert.equal(saves.count, 0);
+});
+
+test('POST /api/favorites rejects a cross-origin request', async (t) => {
+  const { request, login, saves } = await fixture(t);
+  const cookie = await login();
+  const response = await request('/api/favorites', {
+    method: 'POST',
+    cookie,
+    body: { recipeId: recipeA },
+    requestOrigin: 'http://evil.example',
+  });
+  assert.equal(response.status, 403);
+  assert.equal(saves.count, 0);
 });
