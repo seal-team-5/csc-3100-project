@@ -7,23 +7,25 @@ export default function RecipeActions({
   favoriteIds,
   onFavoritesChange,
   onProgress,
+  onMessage,
 }: {
   recipeId: string;
   recipeName: string;
   favoriteIds: string[];
   onFavoritesChange: (favorites: string[]) => void;
-  // Omit to hide the progress buttons (e.g. on the Favorites page).
+  // Omit to hide the progress buttons, like on the Favorites page.
   onProgress?: (progress: RecipeProgress[]) => void;
+  // Receives status text such as "Recipe saved to favorites."
+  onMessage: (message: string) => void;
 }) {
   const [savingProgress, setSavingProgress] = useState(false);
   const [savingFavorite, setSavingFavorite] = useState(false);
-  const [message, setMessage] = useState('');
   const isFavorite = favoriteIds.includes(recipeId);
 
   async function updateProgress(status: RecipeProgress['status']) {
     if (!onProgress) return;
     setSavingProgress(true);
-    setMessage('');
+    onMessage('');
     try {
       const response = await fetch('/api/recipe-progress', {
         method: 'POST',
@@ -38,13 +40,13 @@ export default function RecipeActions({
         );
       const data: { recipeProgress: RecipeProgress[] } = await response.json();
       onProgress(data.recipeProgress);
-      setMessage(
+      onMessage(
         status === 'completed'
           ? 'Recipe marked completed.'
           : 'Recipe added to Active Recipes.'
       );
     } catch (cause) {
-      setMessage(
+      onMessage(
         cause instanceof Error
           ? cause.message
           : 'Could not update recipe progress.'
@@ -56,7 +58,7 @@ export default function RecipeActions({
 
   async function toggleFavorite() {
     setSavingFavorite(true);
-    setMessage('');
+    onMessage('');
     try {
       const response = await fetch('/api/favorites', {
         method: 'POST',
@@ -72,13 +74,13 @@ export default function RecipeActions({
         );
       const data: { favorites: string[] } = await response.json();
       onFavoritesChange(data.favorites);
-      setMessage(
+      onMessage(
         isFavorite
           ? 'Recipe removed from favorites.'
           : 'Recipe saved to favorites.'
       );
     } catch (cause) {
-      setMessage(
+      onMessage(
         cause instanceof Error ? cause.message : 'Could not update favorites.'
       );
     } finally {
@@ -119,9 +121,6 @@ export default function RecipeActions({
           {isFavorite ? 'Unfavorite' : 'Favorite'}
         </button>
       </div>
-      <p role="status" className="progress-message">
-        {message}
-      </p>
     </div>
   );
 }

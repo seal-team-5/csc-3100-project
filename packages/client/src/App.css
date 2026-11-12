@@ -336,6 +336,26 @@ textarea {
   min-height: 0;
   overflow-y: auto;
 }
+.dialog-status {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 100%;
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--recipe-ink);
+  background: white;
+  box-shadow: 0 4px 12px #00000026;
+}
+.dialog-status:empty {
+  display: none;
+}
 .recipe-dialog-footer {
   flex-shrink: 0;
   padding: 16px 28px;

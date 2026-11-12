@@ -28,6 +28,8 @@ export default function RecipeDialog({
   } | null>(null);
   const [retry, setRetry] = useState(0);
   const { id } = result.recipe;
+  const [statusFeedback, setStatusFeedback] = useState({ id: '', text: '' });
+  const statusMessage = statusFeedback.id === id ? statusFeedback.text : '';
   const loading = loaded?.id !== id || loaded.retry !== retry;
   const detail = loading ? null : loaded.recipe;
   const error = loading ? '' : loaded.error;
@@ -216,9 +218,13 @@ export default function RecipeDialog({
             favoriteIds={favoriteIds}
             onFavoritesChange={onFavoritesChange}
             onProgress={onProgress}
+            onMessage={(text) => setStatusFeedback({ id, text })}
           />
         </footer>
       </article>
+      <p role="status" className="dialog-status">
+        {statusMessage}
+      </p>
     </dialog>
   );
 }
