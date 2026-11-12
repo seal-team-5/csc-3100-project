@@ -92,3 +92,9 @@ async function fixture(t) {
   return { request, login, toggle, users, saves };
 }
 
+test('GET /api/user requires login', async (t) => {
+  const { request } = await fixture(t);
+  const response = await request('/api/user');
+  assert.equal(response.status, 401);
+  assert.deepEqual(await response.json(), { error: 'Please log in.' });
+});
