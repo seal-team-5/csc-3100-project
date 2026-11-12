@@ -219,3 +219,31 @@ test('POST /api/favorites rejects a cross-origin request', async (t) => {
   assert.equal(response.status, 403);
   assert.equal(saves.count, 0);
 });
+
+// PER USER TEST (COMBINED)
+
+test('favorites show up in GET /api/user and are per-user', async (t) => {
+  const { request, toggle, login } = await fixture(t);
+  const cookie1 = await login('cook1@example.test');
+  const cookie2 = await login('cook2@example.test');
+
+  await toggle(cookie1, recipeA);
+  await toggle(cookie1, recipeB);
+  await toggle(cookie2, recipeB);
+
+  const first = (await (await request('/api/user', { cookie: cookie1 })).json())
+    .user;
+  const second = (
+    await (await request('/api/user', { cookie: cookie2 })).json()
+  ).user;
+  assert.deepEqual(first.favorites, [recipeA, recipeB]);
+  assert.deepEqual(second.favorites, [recipeB]);
+});
+
+test('logging out ends access to the favorites routes', async (t) => {
+  const { request, toggle, login } = await fixture(t);
+  const cookie = await login();
+  await request('/api/auth/logout', { method: 'POST', cookie });
+  assert.equal((await request('/api/user', { cookie })).status, 401);
+  assert.equal((await toggle(cookie, recipeA)).status, 401);
+});
