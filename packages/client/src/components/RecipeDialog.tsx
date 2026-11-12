@@ -8,6 +8,7 @@ export default function RecipeDialog({
   result,
   onClose,
   onRegenerate,
+  progress = [],
   onProgress,
   favoriteIds = [],
   onFavoritesChange = () => {},
@@ -15,6 +16,7 @@ export default function RecipeDialog({
   result: RecipeResult;
   onClose: () => void;
   onRegenerate: () => void;
+  progress?: RecipeProgress[];
   onProgress: (progress: RecipeProgress[]) => void;
   favoriteIds?: string[];
   onFavoritesChange: (favorites: string[]) => void;
@@ -217,6 +219,7 @@ export default function RecipeDialog({
             recipeName={result.recipe.name}
             favoriteIds={favoriteIds}
             onFavoritesChange={onFavoritesChange}
+            progress={progress}
             onProgress={onProgress}
             onMessage={(text) => setStatusFeedback({ id, text })}
           />

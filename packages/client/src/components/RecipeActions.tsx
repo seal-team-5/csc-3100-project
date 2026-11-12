@@ -6,6 +6,7 @@ export default function RecipeActions({
   recipeName,
   favoriteIds,
   onFavoritesChange,
+  progress = [],
   onProgress,
   onMessage,
 }: {
@@ -13,25 +14,38 @@ export default function RecipeActions({
   recipeName: string;
   favoriteIds: string[];
   onFavoritesChange: (favorites: string[]) => void;
-  // Omit to hide the progress buttons, like on the Favorites page.
+  /** The user's current progress entries, used to pick the right button. */
+  progress?: RecipeProgress[];
+  /** Omit to hide the progress button (e.g. on the Favorites page). */
   onProgress?: (progress: RecipeProgress[]) => void;
-  // Receives status text such as "Recipe saved to favorites."
+  /** Receives status text such as "Recipe saved to favorites." */
   onMessage: (message: string) => void;
 }) {
   const [savingProgress, setSavingProgress] = useState(false);
   const [savingFavorite, setSavingFavorite] = useState(false);
   const isFavorite = favoriteIds.includes(recipeId);
+  const status = progress.find((item) => item.recipeId === recipeId)?.status;
 
-  async function updateProgress(status: RecipeProgress['status']) {
+  type StatusChoice = RecipeProgress['status'] | 'none';
+
+  // Saves the status picked in the dropdown. "none" removes the progress entry.
+  async function changeStatus(next: StatusChoice) {
     if (!onProgress) return;
     setSavingProgress(true);
     onMessage('');
     try {
-      const response = await fetch('/api/recipe-progress', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ recipeId, recipeName, status }),
-      });
+      const response = await fetch(
+        next === 'none'
+          ? `/api/recipe-progress/${encodeURIComponent(recipeId)}`
+          : '/api/recipe-progress',
+        next === 'none'
+          ? { method: 'DELETE' }
+          : {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ recipeId, recipeName, status: next }),
+            }
+      );
       if (!response.ok)
         throw new Error(
           response.status === 401
@@ -41,9 +55,11 @@ export default function RecipeActions({
       const data: { recipeProgress: RecipeProgress[] } = await response.json();
       onProgress(data.recipeProgress);
       onMessage(
-        status === 'completed'
+        next === 'completed'
           ? 'Recipe marked completed.'
-          : 'Recipe added to Active Recipes.'
+          : next === 'in-progress'
+            ? 'Recipe added to Active Recipes.'
+            : 'Recipe removed from your progress.'
       );
     } catch (cause) {
       onMessage(
@@ -92,24 +108,20 @@ export default function RecipeActions({
     <div className="recipe-dialog-actions">
       <div className="recipe-progress-actions">
         {onProgress && (
-          <>
-            <button
-              className="secondary-button"
+          <label className="status-select">
+            <span>Status</span>
+            <select
               disabled={savingProgress}
-              onClick={() => void updateProgress('in-progress')}
-              type="button"
+              value={status ?? 'none'}
+              onChange={(event) =>
+                void changeStatus(event.target.value as StatusChoice)
+              }
             >
-              Mark In Progress
-            </button>
-            <button
-              className="primary-button"
-              disabled={savingProgress}
-              onClick={() => void updateProgress('completed')}
-              type="button"
-            >
-              Mark Completed
-            </button>
-          </>
+              <option value="none">Not started</option>
+              <option value="in-progress">In progress</option>
+              <option value="completed">Completed</option>
+            </select>
+          </label>
         )}
         <button
           className="secondary-button"
