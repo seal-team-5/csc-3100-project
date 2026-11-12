@@ -24,15 +24,27 @@ export function filterMatches(recipe: RecipeSummary, selected: RecipeFilter) {
     (filter) => filter.type === selected.type && filter.name === selected.name
   );
 }
+
 export function resultFor(
   recipe: RecipeSummary,
   filters: RecipeFilter[]
 ): RecipeResult {
-  const changedFilters = filters.filter(
-    (filter) => !filterMatches(recipe, filter)
-  );
+  const cuisineFilters = filters.filter((f) => f.type === 'cuisine');
+  const otherFilters = filters.filter((f) => f.type !== 'cuisine');
+
+  // switch cuisines to OR instead of AND: one match is enough (or no cuisine selected at all)
+  const cuisineSatisfied =
+    cuisineFilters.length === 0 ||
+    cuisineFilters.some((filter) => filterMatches(recipe, filter));
+
+  const changedFilters = [
+    ...(cuisineSatisfied ? [] : cuisineFilters),
+    ...otherFilters.filter((filter) => !filterMatches(recipe, filter)),
+  ];
+
   return { recipe, exactMatch: changedFilters.length === 0, changedFilters };
 }
+
 export function getRecipeResult(
   recipes: RecipeSummary[],
   filters: RecipeFilter[],
