@@ -1,16 +1,23 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Recipe, RecipeResult } from '../lib/recipes';
+import type { Recipe, RecipeProgress, RecipeResult } from '../lib/recipes';
 import RecipeReview from '../pages/RecipeReview';
 import { RecipeImage } from './RecipeCard';
+import RecipeActions from './RecipeActions';
 
 export default function RecipeDialog({
   result,
   onClose,
   onRegenerate,
+  onProgress,
+  favoriteIds = [],
+  onFavoritesChange = () => {},
 }: {
   result: RecipeResult;
   onClose: () => void;
   onRegenerate: () => void;
+  onProgress: (progress: RecipeProgress[]) => void;
+  favoriteIds?: string[];
+  onFavoritesChange: (favorites: string[]) => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
   const [loaded, setLoaded] = useState<{
@@ -101,96 +108,116 @@ export default function RecipeDialog({
         if (event.target === event.currentTarget) onClose();
       }}
     >
+      <button
+        autoFocus
+        aria-label="Close recipe"
+        className="close-button"
+        onClick={onClose}
+        type="button"
+      >
+        <img src="/design/close.svg" alt="" width="14" height="14" />
+      </button>
       <article className="recipe-dialog-card">
-        <div className="recipe-banner">
-          <RecipeImage
-            key={id}
-            loading="eager"
-            image={result.recipe.image}
-            name={result.recipe.name}
-          />
-          <button
-            autoFocus
-            aria-label="Close recipe"
-            className="close-button"
-            onClick={onClose}
-            type="button"
-          >
-            <img src="/design/close.svg" alt="" width="14" height="14" />
-          </button>
-        </div>
-        <div className="recipe-content" aria-busy={loading}>
-          <header>
-            <p
-              className={`match-note ${result.exactMatch ? '' : 'closest-match'}`}
-            >
-              {result.exactMatch ? 'Matches your filters' : 'Closest match'}
-            </p>
-            <h2 id="recipe-title">{result.recipe.name}</h2>
-            {!result.exactMatch && (
-              <p className="similar-note">
-                This recipe does not match:{' '}
-                {result.changedFilters
-                  .map((filter) => `${filter.type}: ${filter.name}`)
-                  .join(', ')}
-                .
-              </p>
-            )}
-            <div className="recipe-tags">
-              {result.recipe.filters.map((filter) => (
-                <span key={`${filter.type}-${filter.name}`}>{filter.name}</span>
-              ))}
-            </div>
-          </header>
-          {loading && <p role="status">Loading ingredients and directions…</p>}
-          {error && (
-            <div role="alert">
-              <p>{error}</p>
-              <button
-                className="secondary-button"
-                onClick={() => setRetry((value) => value + 1)}
-                type="button"
+        <div className="recipe-scroll">
+          <div className="recipe-banner">
+            <RecipeImage
+              key={id}
+              loading="eager"
+              image={result.recipe.image}
+              name={result.recipe.name}
+            />
+          </div>
+          <div className="recipe-content" aria-busy={loading}>
+            <header>
+              <p
+                className={`match-note ${result.exactMatch ? '' : 'closest-match'}`}
               >
-                Retry
-              </button>
-            </div>
-          )}
-          {detail && (
-            <>
-              <section className="recipe-detail-section">
-                <h3>Ingredients</h3>
-                <ul>
-                  {detail.ingredients.map((ingredient, index) => (
-                    <li key={index}>{ingredient}</li>
-                  ))}
-                </ul>
-              </section>
-              <section className="recipe-detail-section">
-                <h3>Directions</h3>
-                <ol>
-                  {detail.instructions.map((step, index) => (
-                    <li key={index}>
-                      <span className="step-number" aria-hidden="true">
-                        {index + 1}
-                      </span>
-                      <span>{step}</span>
-                    </li>
-                  ))}
-                </ol>
-              </section>
-              <section className="recipe-detail-section">
-                <RecipeReview key={id} recipeId={id} recipeName={detail.name} />
-              </section>
-            </>
-          )}
-          <button
-            className="regenerate-button secondary-button"
-            onClick={onRegenerate}
-            type="button"
-          >
-            Show me another recipe
-          </button>
+                {result.exactMatch ? 'Matches your filters' : 'Closest match'}
+              </p>
+              <h2 id="recipe-title">{result.recipe.name}</h2>
+              {!result.exactMatch && (
+                <p className="similar-note">
+                  This recipe does not match:{' '}
+                  {result.changedFilters
+                    .map((filter) => `${filter.type}: ${filter.name}`)
+                    .join(', ')}
+                  .
+                </p>
+              )}
+              <div className="recipe-tags">
+                {result.recipe.filters.map((filter) => (
+                  <span key={`${filter.type}-${filter.name}`}>
+                    {filter.name}
+                  </span>
+                ))}
+              </div>
+            </header>
+            {loading && (
+              <p role="status">Loading ingredients and directions…</p>
+            )}
+            {error && (
+              <div role="alert">
+                <p>{error}</p>
+                <button
+                  className="secondary-button"
+                  onClick={() => setRetry((value) => value + 1)}
+                  type="button"
+                >
+                  Retry
+                </button>
+              </div>
+            )}
+            {detail && (
+              <>
+                <section className="recipe-detail-section">
+                  <h3>Ingredients</h3>
+                  <ul>
+                    {detail.ingredients.map((ingredient, index) => (
+                      <li key={index}>{ingredient}</li>
+                    ))}
+                  </ul>
+                </section>
+                <section className="recipe-detail-section">
+                  <h3>Directions</h3>
+                  <ol>
+                    {detail.instructions.map((step, index) => (
+                      <li key={index}>
+                        <span className="step-number" aria-hidden="true">
+                          {index + 1}
+                        </span>
+                        <span>{step}</span>
+                      </li>
+                    ))}
+                  </ol>
+                </section>
+                <section className="recipe-detail-section">
+                  <RecipeReview
+                    key={id}
+                    recipeId={id}
+                    recipeName={detail.name}
+                  />
+                </section>
+              </>
+            )}
+            <button
+              className="regenerate-button secondary-button"
+              onClick={onRegenerate}
+              type="button"
+            >
+              Show me another recipe
+            </button>
+          </div>
         </div>
+        <footer className="recipe-dialog-footer">
+          <RecipeActions
+            key={id}
+            recipeId={id}
+            recipeName={result.recipe.name}
+            favoriteIds={favoriteIds}
+            onFavoritesChange={onFavoritesChange}
+            onProgress={onProgress}
+          />
+        </footer>
       </article>
     </dialog>
   );

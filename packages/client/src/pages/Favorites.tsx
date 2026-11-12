@@ -7,7 +7,6 @@ import { useEffect, useState } from 'react';
 import type { RecipeResult, RecipeSummary } from '../lib/recipes';
 import RecipeCard from '../components/RecipeCard';
 import RecipeDialog from '../components/RecipeDialog';
-import RecipeActions from '../components/RecipeActions';
 
 type UserData = {
   favorites: string[];
@@ -77,14 +76,7 @@ export default function Favorites() {
             key={recipe.id}
             recipe={recipe}
             onOpen={setSelectedRecipe}
-          >
-            <RecipeActions
-              recipeId={recipe.id}
-              recipeName={recipe.name}
-              favoriteIds={favoriteIds}
-              onFavoritesChange={setFavoriteIds}
-            />
-          </RecipeCard>
+          />
         ))}
       </div>
 
@@ -93,6 +85,9 @@ export default function Favorites() {
           result={dialogResult}
           onClose={() => setSelectedRecipe(null)}
           onRegenerate={() => setSelectedRecipe(null)}
+          onProgress={() => {}}
+          favoriteIds={favoriteIds}
+          onFavoritesChange={setFavoriteIds}
         />
       )}
     </section>

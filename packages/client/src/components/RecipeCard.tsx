@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import type { RecipeSummary } from '../lib/recipes';
 
 export function RecipeImage({
@@ -36,11 +36,9 @@ export function RecipeImage({
 export default function RecipeCard({
   recipe,
   onOpen,
-  children,
 }: {
   recipe: RecipeSummary;
   onOpen: (recipe: RecipeSummary) => void;
-  children?: ReactNode;
 }) {
   return (
     <article className="recipe-card">
@@ -60,7 +58,6 @@ export default function RecipeCard({
           <span className="recipe-card-link">View Ingredients</span>
         </div>
       </button>
-      {children}
     </article>
   );
 }

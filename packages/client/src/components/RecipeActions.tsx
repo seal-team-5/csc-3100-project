@@ -12,7 +12,7 @@ export default function RecipeActions({
   recipeName: string;
   favoriteIds: string[];
   onFavoritesChange: (favorites: string[]) => void;
-  // Omit to hide the progress buttons, like on the Favorites page
+  // Omit to hide the progress buttons (e.g. on the Favorites page).
   onProgress?: (progress: RecipeProgress[]) => void;
 }) {
   const [savingProgress, setSavingProgress] = useState(false);
@@ -87,7 +87,7 @@ export default function RecipeActions({
   }
 
   return (
-    <div className="recipe-card-actions">
+    <div className="recipe-dialog-actions">
       <div className="recipe-progress-actions">
         {onProgress && (
           <>

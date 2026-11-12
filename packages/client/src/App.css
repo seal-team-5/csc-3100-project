@@ -246,8 +246,6 @@ textarea {
   box-shadow: 0 6px 12px #0000001a;
   overflow: hidden;
   transition: box-shadow 150ms;
-  display: flex;
-  flex-direction: column;
 }
 .recipe-card:hover {
   box-shadow: 0 8px 18px #00000026;
@@ -261,7 +259,7 @@ textarea {
   flex-direction: column;
   justify-content: flex-start;
   width: 100%;
-  flex: 1;
+  height: 100%;
   padding: 0;
   border: 0;
   border-radius: inherit;
@@ -313,19 +311,35 @@ textarea {
 .recipe-modal {
   padding: 0;
   border: 0;
-  border-radius: 24px;
   width: min(540px, calc(100% - 32px));
-  max-height: calc(100dvh - 32px);
-  overflow: auto;
+  max-height: none;
+  overflow: visible; /* lets the close button sit outside the card */
   color: var(--recipe-ink);
-  background: white;
-  box-shadow: 0 12px 32px #00000026;
+  background: transparent;
 }
 .recipe-modal::backdrop {
   background: #0f111ab3;
 }
 .recipe-dialog-card {
+  display: flex;
+  flex-direction: column;
   width: 100%;
+  max-height: calc(100dvh - 120px);
+  overflow: hidden;
+  border-radius: 24px;
+  background: white;
+  box-shadow: 0 12px 32px #00000026;
+}
+.recipe-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.recipe-dialog-footer {
+  flex-shrink: 0;
+  padding: 16px 28px;
+  border-top: 1px solid var(--recipe-border);
+  background: white;
 }
 .recipe-banner {
   position: relative;
@@ -340,8 +354,8 @@ textarea {
 }
 .close-button {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: -52px;
+  right: 0;
   display: grid;
   place-items: center;
   width: 36px;
@@ -437,18 +451,13 @@ textarea {
   background: #1f1f2e14;
   color: #1f1f2e;
 }
-.recipe-card-actions {
-  padding: 0 12px 12px;
-}
 .recipe-progress-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 12px;
 }
 .recipe-progress-actions button {
-  flex: 1 1 100%;
-  padding: 8px 10px;
-  font-size: 13px;
+  flex: 1;
 }
 .progress-message {
   font-size: 13px;
@@ -497,6 +506,9 @@ textarea {
   }
   .recipe-content {
     padding: 20px;
+  }
+  .recipe-dialog-footer {
+    padding: 12px 20px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
