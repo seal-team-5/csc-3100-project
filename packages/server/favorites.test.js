@@ -114,3 +114,11 @@ test('GET /api/user returns the public user with empty favorites', async (t) => 
   });
   assert.equal('password' in user, false);
 });
+
+test('GET /api/user returns existing favorites', async (t) => {
+  const { request, login, users } = await fixture(t);
+  users.get('1').favorites = [recipeA, recipeB];
+  const cookie = await login();
+  const { user } = await (await request('/api/user', { cookie })).json();
+  assert.deepEqual(user.favorites, [recipeA, recipeB]);
+});
