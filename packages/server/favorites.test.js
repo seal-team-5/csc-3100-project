@@ -122,3 +122,11 @@ test('GET /api/user returns existing favorites', async (t) => {
   const { user } = await (await request('/api/user', { cookie })).json();
   assert.deepEqual(user.favorites, [recipeA, recipeB]);
 });
+
+test('GET /api/user treats a missing favorites field as empty', async (t) => {
+  const { request, login, users } = await fixture(t);
+  delete users.get('1').favorites;
+  const cookie = await login();
+  const { user } = await (await request('/api/user', { cookie })).json();
+  assert.deepEqual(user.favorites, []);
+});
