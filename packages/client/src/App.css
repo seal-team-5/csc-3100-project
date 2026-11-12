@@ -246,6 +246,8 @@ textarea {
   box-shadow: 0 6px 12px #0000001a;
   overflow: hidden;
   transition: box-shadow 150ms;
+  display: flex;
+  flex-direction: column;
 }
 .recipe-card:hover {
   box-shadow: 0 8px 18px #00000026;
@@ -259,7 +261,7 @@ textarea {
   flex-direction: column;
   justify-content: flex-start;
   width: 100%;
-  height: 100%;
+  flex: 1;
   padding: 0;
   border: 0;
   border-radius: inherit;
@@ -435,13 +437,18 @@ textarea {
   background: #1f1f2e14;
   color: #1f1f2e;
 }
+.recipe-card-actions {
+  padding: 0 12px 12px;
+}
 .recipe-progress-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: 8px;
 }
 .recipe-progress-actions button {
-  flex: 1;
+  flex: 1 1 100%;
+  padding: 8px 10px;
+  font-size: 13px;
 }
 .progress-message {
   font-size: 13px;
