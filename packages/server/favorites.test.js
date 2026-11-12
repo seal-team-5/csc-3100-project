@@ -98,3 +98,19 @@ test('GET /api/user requires login', async (t) => {
   assert.equal(response.status, 401);
   assert.deepEqual(await response.json(), { error: 'Please log in.' });
 });
+
+test('GET /api/user returns the public user with empty favorites', async (t) => {
+  const { request, login } = await fixture(t);
+  const cookie = await login();
+  const response = await request('/api/user', { cookie });
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get('cache-control'), 'no-store');
+  const { user } = await response.json();
+  assert.deepEqual(user, {
+    id: '1',
+    username: 'First Cook',
+    email: 'cook1@example.test',
+    favorites: [],
+  });
+  assert.equal('password' in user, false);
+});
