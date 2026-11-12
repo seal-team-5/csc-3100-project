@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import RecipeCard from '../components/RecipeCard';
 import RecipeDialog from '../components/RecipeDialog';
+import RecipeActions from '../components/RecipeActions';
 import { filterMatches, getRecipeResult, resultFor } from '../lib/recipes';
 import type {
   RecipeFilter,
@@ -263,7 +264,15 @@ export default function RecipeFinder({ username }: { username?: string }) {
                     key={recipe.id}
                     recipe={recipe}
                     onOpen={openRecipe}
-                  />
+                  >
+                    <RecipeActions
+                      recipeId={recipe.id}
+                      recipeName={recipe.name}
+                      favoriteIds={favoriteIds}
+                      onFavoritesChange={setFavoriteIds}
+                      onProgress={setProgress}
+                    />
+                  </RecipeCard>
                 ))}
               </div>
             </section>
@@ -305,7 +314,15 @@ export default function RecipeFinder({ username }: { username?: string }) {
                     key={recipe.id}
                     recipe={recipe}
                     onOpen={openRecipe}
-                  />
+                  >
+                    <RecipeActions
+                      recipeId={recipe.id}
+                      recipeName={recipe.name}
+                      favoriteIds={favoriteIds}
+                      onFavoritesChange={setFavoriteIds}
+                      onProgress={setProgress}
+                    />
+                  </RecipeCard>
                 ))}
               </div>
             )}
@@ -317,9 +334,6 @@ export default function RecipeFinder({ username }: { username?: string }) {
           result={recipeResult}
           onClose={() => setRecipeResult(null)}
           onRegenerate={showRecipe}
-          onProgress={setProgress}
-          favoriteIds={favoriteIds}
-          onFavoritesChange={setFavoriteIds}
         />
       )}
     </section>
