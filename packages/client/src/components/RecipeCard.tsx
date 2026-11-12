@@ -55,6 +55,11 @@ export default function RecipeCard({
         />
         <div className="recipe-card-body">
           <h3 title={recipe.name}>{recipe.name}</h3>
+          <span className="recipe-card-rating">
+            {recipe.averageRating
+              ? `★ ${recipe.averageRating.toFixed(1)} (${recipe.reviewCount})`
+              : 'No ratings yet'}
+          </span>
           <span className="recipe-card-link">View Ingredients</span>
         </div>
       </button>
