@@ -108,6 +108,25 @@ test('MongoDB reviews survive backend restart, update without duplication, and o
     const path = `/api/recipes/${recipe._id}/reviews`;
     await startServer();
     let cookie = await login(user.email);
+    const createdResponse = await request('/api/recipes', {
+      method: 'POST',
+      cookie,
+      body: {
+        name: 'Created via API ' + suffix,
+        ingredients: ['1 tomato'],
+        instructions: ['Slice and serve.'],
+      },
+    });
+    assert.equal(createdResponse.status, 201);
+    const createdRecipe = (await createdResponse.json()).recipe;
+    assert.equal(
+      (
+        await Recipe.collection.findOne({
+          _id: new mongoose.Types.ObjectId(createdRecipe.id),
+        })
+      ).Name,
+      createdRecipe.name
+    );
     assert.deepEqual(await (await request(path)).json(), {
       reviews: [],
       reviewCount: 0,
@@ -146,6 +165,10 @@ test('MongoDB reviews survive backend restart, update without duplication, and o
     await stopServer();
     await startServer();
     cookie = await login(user.email);
+    const createdDetail = await (
+      await request('/api/recipes/' + createdRecipe.id)
+    ).json();
+    assert.equal(createdDetail.recipe.name, createdRecipe.name);
     const generated = await (
       await request('/api/recipe-history', { cookie })
     ).json();

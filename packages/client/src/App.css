@@ -595,3 +595,95 @@ textarea {
     transition: none;
   }
 }
+.home-recipe-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.add-recipe-button {
+  background: #f3f4f6;
+  border-color: #111827;
+  color: #111827;
+  text-transform: uppercase;
+}
+.add-recipe-button:hover:not(:disabled) {
+  background: #ffffff;
+}
+.create-recipe-modal {
+  width: min(640px, calc(100% - 32px));
+}
+.create-recipe-form {
+  box-sizing: border-box;
+  max-height: calc(100dvh - 120px);
+  overflow-y: auto;
+  padding: 24px;
+  background: white;
+  border-radius: 24px;
+  box-shadow: 0 12px 32px #00000026;
+}
+.create-recipe-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+}
+.create-recipe-heading h2 {
+  margin: 0;
+}
+.create-recipe-form > p,
+.create-recipe-fields small {
+  color: var(--recipe-muted);
+  line-height: 1.5;
+}
+.create-recipe-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+  border: 0;
+  padding: 0;
+  margin: 20px 0;
+}
+.create-recipe-fields > label {
+  font-weight: 600;
+  margin-top: 8px;
+}
+.create-recipe-fields > input,
+.create-recipe-fields > textarea {
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--recipe-border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font: inherit;
+}
+.create-recipe-fields textarea {
+  resize: vertical;
+}
+.create-recipe-filters {
+  margin-top: 12px;
+}
+.create-recipe-filters summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.create-recipe-filters .filter-group {
+  margin-top: 16px;
+}
+.create-recipe-actions {
+  display: flex;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.create-recipe-error {
+  color: #a42323 !important;
+}
+@media (max-width: 600px) {
+  .home-recipe-actions {
+    width: 100%;
+  }
+  .home-recipe-actions > button {
+    flex: 1 1 180px;
+  }
+}
