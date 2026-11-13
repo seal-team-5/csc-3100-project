@@ -534,12 +534,42 @@ function validText(value, maxLength) {
     value.trim().length <= maxLength
   );
 }
+
+const LIST_FIELDS = ['dietaryRestrictions', 'dislikes', 'allergies'];
+const NOTIFICATION_DEFAULTS = {
+  dailySuggestions: true,
+  groceryItems: true,
+  weeklySummary: false,
+  marketing: false,
+};
+const NOTIFICATION_KEYS = Object.keys(NOTIFICATION_DEFAULTS);
+
+function validList(value) {
+  return (
+    Array.isArray(value) &&
+    value.length <= 30 &&
+    value.every(
+      (item) =>
+        typeof item === 'string' && item.trim().length > 0 && item.length <= 60
+    )
+  );
+}
+
+function validNotifications(value) {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    NOTIFICATION_KEYS.every((key) => typeof value[key] === 'boolean')
+  );
+}
+
 function publicUser(user) {
   return { id: String(user._id), username: user.username, email: user.email };
 }
 
 function publicSettings(user) {
   const s = user.settings || {};
+  const n = s.notifications || {};
   return {
     servingSize: s.servingSize ?? 2,
     location: s.location ?? '',
@@ -548,5 +578,12 @@ function publicSettings(user) {
       name,
       type,
     })),
+    ...Object.fromEntries(LIST_FIELDS.map((key) => [key, [...(s[key] || [])]])),
+    notifications: Object.fromEntries(
+      NOTIFICATION_KEYS.map((key) => [
+        key,
+        n[key] ?? NOTIFICATION_DEFAULTS[key],
+      ])
+    ),
   };
 }
