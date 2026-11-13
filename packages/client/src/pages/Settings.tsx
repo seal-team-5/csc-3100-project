@@ -390,9 +390,14 @@ export default function Settings() {
 
         <hr />
 
-        <button type="button" id="sign-out" onClick={handleSignOut}>
-          Sign Out
-        </button>
+        <div className="settings-actions">
+          <button type="submit" className="primary-button" disabled={saving}>
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+          <button type="button" id="sign-out" onClick={handleSignOut}>
+            Sign Out
+          </button>
+        </div>
       </form>
     </section>
   );
