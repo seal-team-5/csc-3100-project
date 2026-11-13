@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import RecipeCard from '../components/RecipeCard';
 import RecipeDialog from '../components/RecipeDialog';
-import { filterMatches, getRecipeResult, resultFor } from '../lib/recipes';
+import Pagination from '../components/Pagination';
+import { compareByRating, getRecipeResult, resultFor } from '../lib/recipes';
 import type {
   RecipeFilter,
   RecipeProgress,
@@ -13,6 +14,7 @@ type SummaryResponse = {
   recipes: RecipeSummary[];
   filterGroups: Record<string, string[]>;
 };
+const PAGE_SIZE = 12;
 const filterLabel = (type: string) =>
   type.charAt(0).toUpperCase() + type.slice(1);
 
@@ -29,6 +31,8 @@ export default function RecipeFinder({ username }: { username?: string }) {
   const [recipeResult, setRecipeResult] = useState<RecipeResult | null>(null);
   const [progress, setProgress] = useState<RecipeProgress[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const [historyError, setHistoryError] = useState('');
 
   useEffect(() => {
     async function loadFavoriteIds() {
@@ -106,19 +110,36 @@ export default function RecipeFinder({ username }: { username?: string }) {
     return () => controller.abort();
   }, []);
 
+  // A recipe matches if resultFor says so: cuisine filters are OR,
+  // all other filter types are AND for now. Matches are sorted best rated
+  // first and split into pages.
   const matches = useMemo(
     () =>
-      recipes.filter((recipe) =>
-        selectedFilters.every((filter) => filterMatches(recipe, filter))
-      ),
+      recipes
+        .filter((recipe) => resultFor(recipe, selectedFilters).exactMatch)
+        .sort(compareByRating),
     [recipes, selectedFilters]
   );
+  const pageCount = Math.max(1, Math.ceil(matches.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pageMatches = matches.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+  const changePage = (next: number) => {
+    setPage(next);
+    document
+      .getElementById('recipe-grid-heading')
+      ?.scrollIntoView({ block: 'start' });
+  };
+
   const activeRecipes = recipes.filter((recipe) =>
     progress.some(
       (item) => item.recipeName === recipe.name && item.status === 'in-progress'
     )
   );
-  const toggleFilter = (filter: RecipeFilter) =>
+  const toggleFilter = (filter: RecipeFilter) => {
+    setPage(1);
     setSelectedFilters((current) =>
       current.some(
         (item) => item.type === filter.type && item.name === filter.name
@@ -128,15 +149,38 @@ export default function RecipeFinder({ username }: { username?: string }) {
           )
         : [...current, filter]
     );
+  };
   const openRecipe = (recipe: RecipeSummary) =>
     setRecipeResult(resultFor(recipe, selectedFilters));
-  const showRecipe = () =>
-    setRecipeResult(
-      getRecipeResult(recipes, selectedFilters, recipeResult?.recipe.id)
+  const showRecipe = () => {
+    const result = getRecipeResult(
+      recipes,
+      selectedFilters,
+      recipeResult?.recipe.id
     );
+    setRecipeResult(result);
+    setHistoryError('');
+    if (!result) return;
+    void fetch('/api/recipe-history', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipeId: result.recipe.id }),
+    })
+      .then((response) => {
+        if (response.status === 401) {
+          setHistoryError('Sign in to save generated recipes to History.');
+        } else if (!response.ok) {
+          setHistoryError('This recipe could not be saved to History.');
+        }
+      })
+      .catch(() =>
+        setHistoryError('This recipe could not be saved to History.')
+      );
+  };
 
   return (
     <section className="home-page">
+      {historyError && <p role="status">{historyError}</p>}
       <div className="home-intro">
         <h1>
           {username ? `Hello, ${username}!` : 'Find your next favorite recipe'}
@@ -159,7 +203,10 @@ export default function RecipeFinder({ username }: { username?: string }) {
           {!!selectedFilters.length && (
             <button
               className="text-button"
-              onClick={() => setSelectedFilters([])}
+              onClick={() => {
+                setSelectedFilters([]);
+                setPage(1);
+              }}
               type="button"
             >
               Clear all
@@ -279,7 +326,8 @@ export default function RecipeFinder({ username }: { username?: string }) {
                   : 'Discover Recipes'}
               </h2>
               <span role="status">
-                {matches.length} {matches.length === 1 ? 'recipe' : 'recipes'}
+                {matches.length} {matches.length === 1 ? 'recipe' : 'recipes'} ·
+                top rated first
               </span>
             </div>
             {!recipes.length ? (
@@ -292,22 +340,32 @@ export default function RecipeFinder({ username }: { username?: string }) {
                 </p>
                 <button
                   className="secondary-button"
-                  onClick={() => setSelectedFilters([])}
+                  onClick={() => {
+                    setSelectedFilters([]);
+                    setPage(1);
+                  }}
                   type="button"
                 >
                   Clear filters
                 </button>
               </div>
             ) : (
-              <div className="recipe-grid">
-                {matches.map((recipe) => (
-                  <RecipeCard
-                    key={recipe.id}
-                    recipe={recipe}
-                    onOpen={openRecipe}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="recipe-grid">
+                  {pageMatches.map((recipe) => (
+                    <RecipeCard
+                      key={recipe.id}
+                      recipe={recipe}
+                      onOpen={openRecipe}
+                    />
+                  ))}
+                </div>
+                <Pagination
+                  page={currentPage}
+                  pageCount={pageCount}
+                  onPageChange={changePage}
+                />
+              </>
             )}
           </section>
         </>

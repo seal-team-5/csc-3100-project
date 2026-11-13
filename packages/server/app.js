@@ -82,10 +82,12 @@ export function createApp(options) {
     try {
       const summary = req.query.view === 'summary';
       const query = Recipe.find({});
-      if (summary) query.select('Image Name Filters');
+      if (summary) query.select('Image Name Filters Reviews');
       const documents = await query.lean();
       const recipes = documents.map((recipe) => ({
-        ...(summary ? { id: String(recipe._id) } : {}),
+        ...(summary
+          ? { id: String(recipe._id), ...ratingSummary(recipe.Reviews) }
+          : {}),
         image: recipe.Image,
         name: recipe.Name,
         ...(!summary
@@ -138,6 +140,45 @@ export function createApp(options) {
         error: 'Unable to load this recipe. Please try again.',
       });
     }
+  });
+
+  // Keep the latest 100 rolls separately from cooking progress.
+  app.get('/api/recipe-history', async (req, res) => {
+    const user = await getAuthenticatedUser(req);
+    if (!user) return res.status(401).json({ error: 'Please log in.' });
+    return res.json({ generatedRecipes: user.generatedRecipes || [] });
+  });
+
+  app.post('/api/recipe-history', async (req, res) => {
+    const user = await getAuthenticatedUser(req);
+    if (!user) return res.status(401).json({ error: 'Please log in.' });
+    const { recipeId } = req.body || {};
+    if (typeof recipeId !== 'string' || !/^[a-f\d]{24}$/i.test(recipeId)) {
+      return res.status(400).json({ error: 'Invalid recipe ID.' });
+    }
+    const recipe = await Recipe.findById(recipeId);
+    if (!recipe) return res.status(404).json({ error: 'Recipe not found.' });
+    // An atomic push preserves simultaneous rolls from different tabs/devices.
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $push: {
+          generatedRecipes: {
+            $each: [
+              {
+                recipeId: recipe._id,
+                recipeName: recipe.Name,
+                image: recipe.Image,
+                generatedAt: new Date(),
+              },
+            ],
+            $position: 0,
+            $slice: 100,
+          },
+        },
+      }
+    );
+    return res.status(201).json({ message: 'Recipe added to history.' });
   });
 
   // returns the signed-in user's recipe progress, resolving any legacy entries by name to their current recipe IDs.
@@ -336,11 +377,9 @@ export function createApp(options) {
         .json({ error: 'Rating must be a whole number from 1 to 5.' });
     }
     if (typeof note !== 'string' || note.length > 2000) {
-      return res
-        .status(400)
-        .json({
-          error: 'Review note must be text with at most 2000 characters.',
-        });
+      return res.status(400).json({
+        error: 'Review note must be text with at most 2000 characters.',
+      });
     }
 
     // Optimistic concurrency prevents simultaneous saves from dropping other reviews.
@@ -370,12 +409,9 @@ export function createApp(options) {
         if (error.name !== 'VersionError') throw error;
       }
     }
-    return res
-      .status(409)
-      .json({
-        error:
-          'Another review was saved at the same time. Please submit again.',
-      });
+    return res.status(409).json({
+      error: 'Another review was saved at the same time. Please submit again.',
+    });
   });
 
   app.get('/api/recipes/:id/reviews', async (req, res) => {
@@ -474,6 +510,17 @@ export function createApp(options) {
 }
 
 //helpers
+// Average rating and review count only; individual reviews are never exposed here.
+function ratingSummary(reviews = []) {
+  const reviewCount = reviews.length;
+  const total = reviews.reduce((sum, review) => sum + review.rating, 0);
+  return {
+    averageRating: reviewCount
+      ? Number((total / reviewCount).toFixed(1))
+      : null,
+    reviewCount,
+  };
+}
 function normalizeEmail(value) {
   return typeof value === 'string' ? value.trim().toLowerCase() : '';
 }
