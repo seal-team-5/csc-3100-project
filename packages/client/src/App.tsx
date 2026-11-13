@@ -7,6 +7,7 @@ import {
 } from 'react-router-dom';
 import Home from './pages/Home';
 import History from './pages/History';
+import GroceryList from './pages/GroceryList';
 import Login from './pages/Login';
 import Favorites from './pages/Favorites';
 import Settings from './pages/Settings';
@@ -54,7 +55,7 @@ function App() {
       <Routes>
         <Route element={<Layout />}>
           <Route path="/" element={<Home />} />
-          <Route path="/grocery-list" element={<h1>Grocery List</h1>} />
+          <Route path="/grocery-list" element={<GroceryList />} />
           <Route path="/history" element={<History />} />
           <Route path="/favorites" element={<Favorites />} />
           <Route path="/settings" element={<Settings />} />
