@@ -335,6 +335,24 @@ export default function Settings() {
               </div>
             </fieldset>
           ))}
+          {TEXT_PREFERENCES.map(({ key, label, placeholder }) => (
+            <div className="settings-field" key={key}>
+              <label htmlFor={key}>{label}</label>
+              <input
+                id={key}
+                type="text"
+                placeholder={placeholder}
+                maxLength={500}
+                value={textPrefs[key] ?? ''}
+                onChange={(e) =>
+                  setTextPrefs((current) => ({
+                    ...current,
+                    [key]: e.target.value,
+                  }))
+                }
+              />
+            </div>
+          ))}
         </section>
 
         <hr />
@@ -344,7 +362,30 @@ export default function Settings() {
           className="settings-card"
         >
           <h2 id="notifications-heading">Notifications</h2>
-          <p>Notification options are coming soon.</p>
+          <p>
+            Choose how Recipe Me keeps you informed about new matches and
+            updates.
+          </p>
+          <div className="settings-notifications">
+            {NOTIFICATION_OPTIONS.map(({ key, title, description }) => (
+              <label className="notification-option" key={key}>
+                <input
+                  type="checkbox"
+                  checked={notifications[key]}
+                  onChange={(e) =>
+                    setNotifications((current) => ({
+                      ...current,
+                      [key]: e.target.checked,
+                    }))
+                  }
+                />
+                <span>
+                  <strong>{title}</strong>
+                  <small>{description}</small>
+                </span>
+              </label>
+            ))}
+          </div>
         </section>
 
         <hr />
