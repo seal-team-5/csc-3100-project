@@ -186,6 +186,20 @@ textarea {
 .filter-groups[hidden] {
   display: none;
 }
+.filter-search {
+  display: grid;
+  gap: 8px;
+  grid-column: 1 / -1;
+}
+
+.filter-search input {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #aaa;
+  border-radius: 8px;
+  font: inherit;
+}
+
 .filter-group {
   min-width: 0;
   border: 0;

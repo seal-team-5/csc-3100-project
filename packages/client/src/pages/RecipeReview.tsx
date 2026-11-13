@@ -159,8 +159,10 @@ export default function RecipeReview({
         className="secondary-button"
         type="button"
         disabled={loading || saving}
+        aria-expanded={isOpen}
+        aria-controls={`${formId}-form`}
         onClick={() => {
-          setIsOpen(true);
+          setIsOpen((open) => !open);
           setSaveError('');
           setMessage('');
         }}
@@ -169,6 +171,7 @@ export default function RecipeReview({
       </button>
       {isOpen && (
         <form
+          id={`${formId}-form`}
           className="review-form"
           onSubmit={handleSubmit}
           aria-busy={saving}

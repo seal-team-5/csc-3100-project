@@ -2,14 +2,13 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { RecipeFilter } from '../lib/recipes';
+import { FILTER_GROUPS } from '../../../shared/recipeFilters';
 import './Settings.css';
 
 type UnitSystem = 'us' | 'metric';
 
-// Only these filter types are offered as saved preferences.
-const PREFERENCE_TYPES = ['category', 'cuisine'];
 const typeLabel = (type: string) =>
-  type.charAt(0).toUpperCase() + type.slice(1);
+  FILTER_GROUPS.find((group) => group.type === type)?.label || type;
 
 type Notifications = {
   dailySuggestions: boolean;
@@ -307,34 +306,36 @@ export default function Settings() {
         <hr />
 
         <section aria-labelledby="dietary-heading" className="settings-card">
-          <h2 id="dietary-heading">Dietary Preferences</h2>
+          <h2 id="dietary-heading">Recipe Preferences</h2>
           <p>
             Checked options start pre-selected in your recipe filters on the
             home page.
           </p>
 
-          {PREFERENCE_TYPES.filter((type) => filterGroups[type]).map((type) => (
-            <fieldset className="settings-filter-group" key={type}>
-              <legend>{typeLabel(type)}</legend>
-              <div className="settings-filter-options">
-                {filterGroups[type].map((name) => (
-                  <label
-                    key={name}
-                    className={`filter-pill ${
-                      isPreferred(type, name) ? 'selected' : ''
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isPreferred(type, name)}
-                      onChange={() => togglePreferred({ type, name })}
-                    />
-                    {name}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-          ))}
+          {FILTER_GROUPS.filter(({ type }) => filterGroups[type]?.length).map(
+            ({ type }) => (
+              <fieldset className="settings-filter-group" key={type}>
+                <legend>{typeLabel(type)}</legend>
+                <div className="settings-filter-options">
+                  {filterGroups[type].map((name) => (
+                    <label
+                      key={name}
+                      className={`filter-pill ${
+                        isPreferred(type, name) ? 'selected' : ''
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isPreferred(type, name)}
+                        onChange={() => togglePreferred({ type, name })}
+                      />
+                      {name}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )
+          )}
           {TEXT_PREFERENCES.map(({ key, label, placeholder }) => (
             <div className="settings-field" key={key}>
               <label htmlFor={key}>{label}</label>
@@ -353,6 +354,7 @@ export default function Settings() {
               />
             </div>
           ))}
+
         </section>
 
         <hr />

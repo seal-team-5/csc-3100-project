@@ -7,6 +7,7 @@ import connectDB from '../database.ts';
 import Recipe from '../recipeSchema.ts';
 import User from '../userSchema.ts';
 import { createApp } from '../app.js';
+import { normalizeRecipeFilters } from '../../shared/recipeFilters.ts';
 
 // Read-only integration check: use actual MongoDB recipes, with no seed or fixtures.
 test('the combined API serves the actual MongoDB recipe collection', async (t) => {
@@ -37,7 +38,7 @@ test('the combined API serves the actual MongoDB recipe collection', async (t) =
     name: recipe.Name,
     ingredients: recipe.Ingredients,
     instructions: recipe.Instructions,
-    filters: recipe.Filters.map(({ name, type }) => ({ name, type })),
+    filters: normalizeRecipeFilters(recipe.Filters),
   }));
   const byName = (a, b) => a.name.localeCompare(b.name);
   assert.deepEqual(payload.recipes.sort(byName), expected.sort(byName));
