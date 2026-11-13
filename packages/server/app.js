@@ -490,6 +490,16 @@ export function createApp(options) {
       return res.status(400).json({ error: 'Invalid settings.' });
     }
 
+    const { notifications } = req.body || {};
+    if (
+      LIST_FIELDS.some(
+        (key) => req.body[key] !== undefined && !validList(req.body[key])
+      ) ||
+      (notifications !== undefined && !validNotifications(notifications))
+    ) {
+      return res.status(400).json({ error: 'Invalid settings.' });
+    }
+
     user.username = username.trim();
     user.settings.servingSize = servingSize;
     user.settings.location = location.trim();
@@ -498,6 +508,18 @@ export function createApp(options) {
       name,
       type,
     }));
+
+    for (const key of LIST_FIELDS) {
+      if (req.body[key] !== undefined) {
+        user.settings[key] = req.body[key].map((item) => item.trim());
+      }
+    }
+    if (notifications !== undefined) {
+      user.settings.notifications = Object.fromEntries(
+        NOTIFICATION_KEYS.map((key) => [key, notifications[key]])
+      );
+    }
+
     await user.save();
 
     return res.json({
