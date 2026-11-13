@@ -103,6 +103,15 @@ export default function CreateRecipeDialog({
         if (!submitting.current) onClose();
       }}
     >
+      <button
+        className="close-button"
+        type="button"
+        onClick={onClose}
+        disabled={saving}
+        aria-label="Close recipe form"
+      >
+        <img src="/design/close.svg" alt="" width="14" height="14" />
+      </button>
       <form
         className="create-recipe-form"
         onSubmit={handleSubmit}
@@ -110,15 +119,6 @@ export default function CreateRecipeDialog({
       >
         <div className="create-recipe-heading">
           <h2 id="create-recipe-heading">Add a recipe</h2>
-          <button
-            className="close-button"
-            type="button"
-            onClick={onClose}
-            disabled={saving}
-            aria-label="Close recipe form"
-          >
-            <img src="/design/close.svg" alt="" width="14" height="14" />
-          </button>
         </div>
         <p>Share a recipe with the RecipeMe community.</p>
         <fieldset disabled={saving} className="create-recipe-fields">
