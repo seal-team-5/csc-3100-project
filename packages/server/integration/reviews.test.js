@@ -108,6 +108,25 @@ test('MongoDB reviews survive backend restart, update without duplication, and o
     const path = `/api/recipes/${recipe._id}/reviews`;
     await startServer();
     let cookie = await login(user.email);
+    const createdResponse = await request('/api/recipes', {
+      method: 'POST',
+      cookie,
+      body: {
+        name: 'Created via API ' + suffix,
+        ingredients: ['1 tomato'],
+        instructions: ['Slice and serve.'],
+      },
+    });
+    assert.equal(createdResponse.status, 201);
+    const createdRecipe = (await createdResponse.json()).recipe;
+    assert.equal(
+      (
+        await Recipe.collection.findOne({
+          _id: new mongoose.Types.ObjectId(createdRecipe.id),
+        })
+      ).Name,
+      createdRecipe.name
+    );
     assert.deepEqual(await (await request(path)).json(), {
       reviews: [],
       reviewCount: 0,
@@ -130,10 +149,32 @@ test('MongoDB reviews survive backend restart, update without duplication, and o
     assert.equal(result.reviews[0].username, user.username);
     const stored = await Recipe.collection.findOne({ _id: recipe._id });
     assert.equal(stored.Reviews[0].note, 'Initial isolated test note.');
+    const rolls = await Promise.all(
+      [0, 1].map(() =>
+        request('/api/recipe-history', {
+          method: 'POST',
+          cookie,
+          body: { recipeId: String(recipe._id) },
+        })
+      )
+    );
+    assert.ok(rolls.every((response) => response.status === 201));
+    const savedRolls = await User.collection.findOne({ _id: user._id });
+    assert.equal(savedRolls.generatedRecipes.length, 2);
     // Close the app and its session store; reviews must be loaded from MongoDB again.
     await stopServer();
     await startServer();
     cookie = await login(user.email);
+    const createdDetail = await (
+      await request('/api/recipes/' + createdRecipe.id)
+    ).json();
+    assert.equal(createdDetail.recipe.name, createdRecipe.name);
+    const generated = await (
+      await request('/api/recipe-history', { cookie })
+    ).json();
+    assert.equal(generated.generatedRecipes.length, 2);
+    assert.equal(generated.generatedRecipes[0].recipeId, String(recipe._id));
+    assert.equal(generated.generatedRecipes[0].recipeName, recipe.Name);
     result = await (await request(path, { cookie })).json();
     assert.equal(result.reviews[0].note, 'Initial isolated test note.');
     assert.equal(

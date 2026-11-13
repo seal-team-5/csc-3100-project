@@ -2,14 +2,82 @@ import { useEffect, useState } from 'react';
 import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { RecipeFilter } from '../lib/recipes';
+import { FILTER_GROUPS } from '../../../shared/recipeFilters';
 import './Settings.css';
 
 type UnitSystem = 'us' | 'metric';
 
-// Only these filter types are offered as saved preferences.
-const PREFERENCE_TYPES = ['category', 'cuisine'];
 const typeLabel = (type: string) =>
-  type.charAt(0).toUpperCase() + type.slice(1);
+  FILTER_GROUPS.find((group) => group.type === type)?.label || type;
+
+type Notifications = {
+  dailySuggestions: boolean;
+  groceryItems: boolean;
+  weeklySummary: boolean;
+  marketing: boolean;
+};
+
+const DEFAULT_NOTIFICATIONS: Notifications = {
+  dailySuggestions: true,
+  groceryItems: true,
+  weeklySummary: false,
+  marketing: false,
+};
+
+const TEXT_PREFERENCES = [
+  {
+    key: 'dietaryRestrictions',
+    label: 'Dietary Restrictions',
+    placeholder: 'e.g. Vegetarian, No shellfish',
+  },
+  {
+    key: 'dislikes',
+    label: 'Dislikes',
+    placeholder: 'e.g. Blue cheese, Olives',
+  },
+  {
+    key: 'allergies',
+    label: 'Allergies',
+    placeholder: 'e.g. Peanuts, Dairy',
+  },
+] as const;
+
+const NOTIFICATION_OPTIONS: {
+  key: keyof Notifications;
+  title: string;
+  description: string;
+}[] = [
+  {
+    key: 'dailySuggestions',
+    title: 'Daily recipe suggestions',
+    description:
+      'Get a fresh recipe match every morning based on your preferences.',
+  },
+  {
+    key: 'groceryItems',
+    title: 'New grocery list items',
+    description:
+      'Receive reminders when a saved recipe adds new pantry staples.',
+  },
+  {
+    key: 'weeklySummary',
+    title: 'Weekly meal planning summary',
+    description:
+      'See a weekly digest of saved recipes and suggested meal plans.',
+  },
+  {
+    key: 'marketing',
+    title: 'Marketing and product updates',
+    description:
+      'Hear about new features, seasonal collections, and partner offers.',
+  },
+];
+
+const toList = (text: string) =>
+  text
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -25,6 +93,11 @@ export default function Settings() {
   const [preferred, setPreferred] = useState<RecipeFilter[]>([]);
   const [filterGroups, setFilterGroups] = useState<Record<string, string[]>>(
     {}
+  );
+
+  const [textPrefs, setTextPrefs] = useState<Record<string, string>>({});
+  const [notifications, setNotifications] = useState<Notifications>(
+    DEFAULT_NOTIFICATIONS
   );
 
   const [saving, setSaving] = useState(false);
@@ -53,6 +126,15 @@ export default function Settings() {
         setLocation(data.settings.location);
         setUnitSystem(data.settings.unitSystem);
         setPreferred(data.settings.preferredFilters);
+        setTextPrefs(
+          Object.fromEntries(
+            TEXT_PREFERENCES.map(({ key }) => [
+              key,
+              (data.settings[key] ?? []).join(', '),
+            ])
+          )
+        );
+        setNotifications(data.settings.notifications ?? DEFAULT_NOTIFICATIONS);
         setFilterGroups(recipeData.filterGroups ?? {});
       } catch {
         if (!controller.signal.aborted)
@@ -94,6 +176,13 @@ export default function Settings() {
           location,
           unitSystem,
           preferredFilters: preferred,
+          ...Object.fromEntries(
+            TEXT_PREFERENCES.map(({ key }) => [
+              key,
+              toList(textPrefs[key] ?? ''),
+            ])
+          ),
+          notifications,
         }),
       });
       if (!response.ok) {
@@ -217,34 +306,55 @@ export default function Settings() {
         <hr />
 
         <section aria-labelledby="dietary-heading" className="settings-card">
-          <h2 id="dietary-heading">Dietary Preferences</h2>
+          <h2 id="dietary-heading">Recipe Preferences</h2>
           <p>
             Checked options start pre-selected in your recipe filters on the
             home page.
           </p>
 
-          {PREFERENCE_TYPES.filter((type) => filterGroups[type]).map((type) => (
-            <fieldset className="settings-filter-group" key={type}>
-              <legend>{typeLabel(type)}</legend>
-              <div className="settings-filter-options">
-                {filterGroups[type].map((name) => (
-                  <label
-                    key={name}
-                    className={`filter-pill ${
-                      isPreferred(type, name) ? 'selected' : ''
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={isPreferred(type, name)}
-                      onChange={() => togglePreferred({ type, name })}
-                    />
-                    {name}
-                  </label>
-                ))}
-              </div>
-            </fieldset>
+          {FILTER_GROUPS.filter(({ type }) => filterGroups[type]?.length).map(
+            ({ type }) => (
+              <fieldset className="settings-filter-group" key={type}>
+                <legend>{typeLabel(type)}</legend>
+                <div className="settings-filter-options">
+                  {filterGroups[type].map((name) => (
+                    <label
+                      key={name}
+                      className={`filter-pill ${
+                        isPreferred(type, name) ? 'selected' : ''
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isPreferred(type, name)}
+                        onChange={() => togglePreferred({ type, name })}
+                      />
+                      {name}
+                    </label>
+                  ))}
+                </div>
+              </fieldset>
+            )
+          )}
+          {TEXT_PREFERENCES.map(({ key, label, placeholder }) => (
+            <div className="settings-field" key={key}>
+              <label htmlFor={key}>{label}</label>
+              <input
+                id={key}
+                type="text"
+                placeholder={placeholder}
+                maxLength={500}
+                value={textPrefs[key] ?? ''}
+                onChange={(e) =>
+                  setTextPrefs((current) => ({
+                    ...current,
+                    [key]: e.target.value,
+                  }))
+                }
+              />
+            </div>
           ))}
+
         </section>
 
         <hr />
@@ -253,15 +363,43 @@ export default function Settings() {
           aria-labelledby="notifications-heading"
           className="settings-card"
         >
-          <h2 id="notifications-heading">Notifications</h2>
-          <p>Notification options are coming soon.</p>
+          <h2 id="notifications-heading">Email Notifications</h2>
+          <p>
+            Choose how Recipe Me keeps you informed about new matches and
+            updates.
+          </p>
+          <div className="settings-notifications">
+            {NOTIFICATION_OPTIONS.map(({ key, title, description }) => (
+              <label className="notification-option" key={key}>
+                <input
+                  type="checkbox"
+                  checked={notifications[key]}
+                  onChange={(e) =>
+                    setNotifications((current) => ({
+                      ...current,
+                      [key]: e.target.checked,
+                    }))
+                  }
+                />
+                <span>
+                  <strong>{title}</strong>
+                  <small>{description}</small>
+                </span>
+              </label>
+            ))}
+          </div>
         </section>
 
         <hr />
 
-        <button type="button" id="sign-out" onClick={handleSignOut}>
-          Sign Out
-        </button>
+        <div className="settings-actions">
+          <button type="submit" className="primary-button" disabled={saving}>
+            {saving ? 'Saving…' : 'Save Changes'}
+          </button>
+          <button type="button" id="sign-out" onClick={handleSignOut}>
+            Sign Out
+          </button>
+        </div>
       </form>
     </section>
   );

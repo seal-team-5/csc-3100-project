@@ -1,7 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import RecipeCard from '../components/RecipeCard';
+import CreateRecipeDialog from '../components/CreateRecipeDialog';
 import RecipeDialog from '../components/RecipeDialog';
-import { filterMatches, getRecipeResult, resultFor } from '../lib/recipes';
+import Pagination from '../components/Pagination';
+import { FILTER_GROUPS, PREGNANCY_FILTER } from '../../../shared/recipeFilters';
+import { compareByRating, getRecipeResult, resultFor } from '../lib/recipes';
 import type {
   RecipeFilter,
   RecipeProgress,
@@ -13,8 +16,9 @@ type SummaryResponse = {
   recipes: RecipeSummary[];
   filterGroups: Record<string, string[]>;
 };
+const PAGE_SIZE = 12;
 const filterLabel = (type: string) =>
-  type.charAt(0).toUpperCase() + type.slice(1);
+  FILTER_GROUPS.find((group) => group.type === type)?.label || type;
 
 export default function RecipeFinder({ username }: { username?: string }) {
   const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
@@ -26,9 +30,25 @@ export default function RecipeFinder({ username }: { username?: string }) {
   const [reload, setReload] = useState(0);
   const [selectedFilters, setSelectedFilters] = useState<RecipeFilter[]>([]);
   const [expandedFilters, setExpandedFilters] = useState(false);
+  const [filterSearch, setFilterSearch] = useState('');
   const [recipeResult, setRecipeResult] = useState<RecipeResult | null>(null);
   const [progress, setProgress] = useState<RecipeProgress[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
+  const [page, setPage] = useState(1);
+  const [historyError, setHistoryError] = useState('');
+  const pregnancySelected = selectedFilters.some(
+    (filter) =>
+      filter.type === PREGNANCY_FILTER.type &&
+      filter.name === PREGNANCY_FILTER.name
+  );
+  const visibleGroups = FILTER_GROUPS.map((group) => ({
+    ...group,
+    names: (filterGroups[group.type] || []).filter((name) =>
+      name.toLowerCase().includes(filterSearch.trim().toLowerCase())
+    ),
+  })).filter((group) => group.names.length > 0);
+  const [creatingRecipe, setCreatingRecipe] = useState(false);
+  const [creationMessage, setCreationMessage] = useState('');
 
   useEffect(() => {
     async function loadFavoriteIds() {
@@ -106,19 +126,36 @@ export default function RecipeFinder({ username }: { username?: string }) {
     return () => controller.abort();
   }, []);
 
+  // A recipe matches if resultFor says so: cuisine filters are OR,
+  // all other filter types are AND for now. Matches are sorted best rated
+  // first and split into pages.
   const matches = useMemo(
     () =>
-      recipes.filter((recipe) =>
-        selectedFilters.every((filter) => filterMatches(recipe, filter))
-      ),
+      recipes
+        .filter((recipe) => resultFor(recipe, selectedFilters).exactMatch)
+        .sort(compareByRating),
     [recipes, selectedFilters]
   );
+  const pageCount = Math.max(1, Math.ceil(matches.length / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pageMatches = matches.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE
+  );
+  const changePage = (next: number) => {
+    setPage(next);
+    document
+      .getElementById('recipe-grid-heading')
+      ?.scrollIntoView({ block: 'start' });
+  };
+
   const activeRecipes = recipes.filter((recipe) =>
     progress.some(
       (item) => item.recipeName === recipe.name && item.status === 'in-progress'
     )
   );
-  const toggleFilter = (filter: RecipeFilter) =>
+  const toggleFilter = (filter: RecipeFilter) => {
+    setPage(1);
     setSelectedFilters((current) =>
       current.some(
         (item) => item.type === filter.type && item.name === filter.name
@@ -128,27 +165,70 @@ export default function RecipeFinder({ username }: { username?: string }) {
           )
         : [...current, filter]
     );
+  };
   const openRecipe = (recipe: RecipeSummary) =>
     setRecipeResult(resultFor(recipe, selectedFilters));
-  const showRecipe = () =>
-    setRecipeResult(
-      getRecipeResult(recipes, selectedFilters, recipeResult?.recipe.id)
+  const showRecipe = () => {
+    const result = getRecipeResult(
+      recipes,
+      selectedFilters,
+      recipeResult?.recipe.id
     );
+    setRecipeResult(result);
+    setHistoryError('');
+    if (!result) {
+      setHistoryError(
+        pregnancySelected
+          ? 'No recipes are currently tagged for Pregnancy.'
+          : 'No recipes are available yet.'
+      );
+      return;
+    }
+    void fetch('/api/recipe-history', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipeId: result.recipe.id }),
+    })
+      .then((response) => {
+        if (response.status === 401) {
+          setHistoryError('Sign in to save generated recipes to History.');
+        } else if (!response.ok) {
+          setHistoryError('This recipe could not be saved to History.');
+        }
+      })
+      .catch(() =>
+        setHistoryError('This recipe could not be saved to History.')
+      );
+  };
 
   return (
     <section className="home-page">
+      {historyError && <p role="status">{historyError}</p>}
+      {creationMessage && <p role="status">{creationMessage}</p>}
       <div className="home-intro">
         <h1>
           {username ? `Hello, ${username}!` : 'Find your next favorite recipe'}
         </h1>
-        <button
-          className="primary-button show-recipe-button"
-          disabled={loading || !!error || !recipes.length}
-          onClick={showRecipe}
-          type="button"
-        >
-          Show me a recipe!
-        </button>
+        <div className="home-recipe-actions">
+          <button
+            className="primary-button show-recipe-button"
+            disabled={loading || !!error || !recipes.length}
+            onClick={showRecipe}
+            type="button"
+          >
+            Show me a recipe!
+          </button>
+          <button
+            className="secondary-button add-recipe-button"
+            type="button"
+            onClick={() => {
+              setCreationMessage('');
+              setCreatingRecipe(true);
+            }}
+          >
+            Add a recipe
+          </button>
+        </div>
       </div>
       <section className="filter-panel" aria-labelledby="filter-heading">
         <div className="filter-panel-header">
@@ -159,7 +239,10 @@ export default function RecipeFinder({ username }: { username?: string }) {
           {!!selectedFilters.length && (
             <button
               className="text-button"
-              onClick={() => setSelectedFilters([])}
+              onClick={() => {
+                setSelectedFilters([]);
+                setPage(1);
+              }}
               type="button"
             >
               Clear all
@@ -199,7 +282,16 @@ export default function RecipeFinder({ username }: { username?: string }) {
           id="recipe-filter-options"
           hidden={!expandedFilters}
         >
-          {Object.entries(filterGroups).map(([type, names]) => (
+          <label className="filter-search">
+            Search filters
+            <input
+              type="search"
+              value={filterSearch}
+              onChange={(event) => setFilterSearch(event.target.value)}
+              placeholder="Try Italian, chicken, or baking"
+            />
+          </label>
+          {visibleGroups.map(({ type, names }) => (
             <fieldset className="filter-group" key={type}>
               <legend>{filterLabel(type)}</legend>
               <div className="filter-options">
@@ -224,6 +316,9 @@ export default function RecipeFinder({ username }: { username?: string }) {
               </div>
             </fieldset>
           ))}
+          {visibleGroups.length === 0 && (
+            <p role="status">No filters match your search.</p>
+          )}
         </div>
       </section>
       {loading && (
@@ -279,7 +374,8 @@ export default function RecipeFinder({ username }: { username?: string }) {
                   : 'Discover Recipes'}
               </h2>
               <span role="status">
-                {matches.length} {matches.length === 1 ? 'recipe' : 'recipes'}
+                {matches.length} {matches.length === 1 ? 'recipe' : 'recipes'} ·
+                top rated first
               </span>
             </div>
             {!recipes.length ? (
@@ -287,36 +383,62 @@ export default function RecipeFinder({ username }: { username?: string }) {
             ) : !matches.length ? (
               <div className="recipe-state">
                 <p>
-                  No recipes match every filter. Clear a filter to browse more,
-                  or choose “Show me a recipe” for the closest match.
+                  {pregnancySelected
+                    ? 'No recipes match these filters. Suggestions will keep Pregnancy selected and only use recipes carrying that tag.'
+                    : 'No recipes match every filter. Clear a filter to browse more, or choose “Show me a recipe” for the closest match.'}
                 </p>
                 <button
                   className="secondary-button"
-                  onClick={() => setSelectedFilters([])}
+                  onClick={() => {
+                    setSelectedFilters([]);
+                    setPage(1);
+                  }}
                   type="button"
                 >
                   Clear filters
                 </button>
               </div>
             ) : (
-              <div className="recipe-grid">
-                {matches.map((recipe) => (
-                  <RecipeCard
-                    key={recipe.id}
-                    recipe={recipe}
-                    onOpen={openRecipe}
-                  />
-                ))}
-              </div>
+              <>
+                <div className="recipe-grid">
+                  {pageMatches.map((recipe) => (
+                    <RecipeCard
+                      key={recipe.id}
+                      recipe={recipe}
+                      onOpen={openRecipe}
+                    />
+                  ))}
+                </div>
+                <Pagination
+                  page={currentPage}
+                  pageCount={pageCount}
+                  onPageChange={changePage}
+                />
+              </>
             )}
           </section>
         </>
+      )}
+      {creatingRecipe && (
+        <CreateRecipeDialog
+          filterGroups={filterGroups}
+          onClose={() => setCreatingRecipe(false)}
+          onCreated={(recipe) => {
+            setCreatingRecipe(false);
+            setRecipes((current) => [...current, recipe]);
+            setCreationMessage(
+              'Recipe saved! It is now available to the RecipeMe community.'
+            );
+            setRecipeResult(resultFor(recipe, []));
+          }}
+        />
       )}
       {recipeResult && (
         <RecipeDialog
           result={recipeResult}
           onClose={() => setRecipeResult(null)}
           onRegenerate={showRecipe}
+          progress={progress}
           onProgress={setProgress}
           favoriteIds={favoriteIds}
           onFavoritesChange={setFavoriteIds}

@@ -13,6 +13,7 @@ import 'dotenv/config';
 import mongoose from 'mongoose';
 import connectDB from './database';
 import Recipe from './recipeSchema';
+import { normalizeRecipeFilters } from '../shared/recipeFilters.ts';
 
 const BASE_URL = 'https://www.themealdb.com/api/json/v1/1';
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz'.split('');
@@ -86,7 +87,7 @@ function toRecipe(meal: Meal) {
     Name: (meal.strMeal || '').trim(),
     Ingredients: ingredients,
     Instructions: toSteps(meal.strInstructions || ''),
-    Filters: filters,
+    Filters: normalizeRecipeFilters(filters),
   };
 }
 

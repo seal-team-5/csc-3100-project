@@ -1,9 +1,11 @@
+import { useEffect, useState } from 'react';
 import {
   BrowserRouter,
   Routes,
   Route,
   NavLink,
   Outlet,
+  useLocation,
 } from 'react-router-dom';
 import Home from './pages/Home';
 import History from './pages/History';
@@ -14,13 +16,27 @@ import Settings from './pages/Settings';
 import './App.css';
 
 function Layout() {
+  const location = useLocation();
+  const [loggedIn, setLoggedIn] = useState(false);
+
+  // Re-check the session whenever the route changes, ex) after login/logout)
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/auth/me', { signal: controller.signal })
+      .then((response) => setLoggedIn(response.ok))
+      .catch(() => {
+        // ignore aborted & failed requests
+      });
+    return () => controller.abort();
+  }, [location.pathname]);
+
   const pages = [
     'Home',
     'Grocery List',
     'History',
     'Favorites',
     'Settings',
-    'Login',
+    ...(loggedIn ? [] : ['Login']),
   ];
   return (
     <>

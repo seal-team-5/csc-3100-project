@@ -46,7 +46,15 @@ export function configureServer({
     }
     next();
   });
-  app.use(express.json({ limit: '8kb' }));
+  const parseJson = express.json({ limit: '8kb' });
+  const parseRecipeJson = express.json({ limit: '64kb' });
+  app.use((req, res, next) => {
+    const parser =
+      req.method === 'POST' && req.path === '/api/recipes'
+        ? parseRecipeJson
+        : parseJson;
+    parser(req, res, next);
+  });
   app.use(
     '/api',
     session({

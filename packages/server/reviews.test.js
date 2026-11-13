@@ -5,6 +5,7 @@ import mongoose from 'mongoose';
 import bcrypt from 'bcrypt';
 import session from 'express-session';
 import RecipeModel from './recipeSchema.ts';
+import UserModel from './userSchema.ts';
 import { createApp } from './app.js';
 
 const origin = 'http://localhost:3000';
@@ -50,6 +51,15 @@ async function fixture(t) {
     population: null,
   };
   const User = {
+    async updateOne({ _id }, update) {
+      const user = users.get(String(_id));
+      const operation = update.$push.generatedRecipes;
+      user.generatedRecipes = [
+        ...operation.$each,
+        ...(user.generatedRecipes || []),
+      ].slice(0, operation.$slice);
+      return { matchedCount: 1 };
+    },
     findById: async (id) => users.get(String(id)) || null,
     findOne: ({ email }) => ({
       select: async () =>
@@ -389,4 +399,99 @@ test('History resolves legacy names safely and stores IDs for new progress', asy
     ).status,
     400
   );
+});
+
+test('generated history is authenticated, user-specific, newest first and separate from progress', async (t) => {
+  const api = await fixture(t);
+  const path = '/api/recipe-history';
+  assert.equal((await api.request(path)).status, 401);
+  assert.equal(
+    (await api.request(path, { method: 'POST', body: { recipeId } })).status,
+    401
+  );
+  const cookie = await api.login();
+  assert.deepEqual(
+    (await (await api.request(path, { cookie })).json()).generatedRecipes,
+    []
+  );
+  for (const [id, expected] of [
+    ['bad', 400],
+    [missingId, 404],
+  ]) {
+    assert.equal(
+      (
+        await api.request(path, {
+          method: 'POST',
+          cookie,
+          body: { recipeId: id },
+        })
+      ).status,
+      expected
+    );
+  }
+  api.records.set(missingId, { ...baseRecipe, _id: missingId, Name: 'Soup' });
+  for (const id of [recipeId, missingId, recipeId]) {
+    assert.equal(
+      (
+        await api.request(path, {
+          method: 'POST',
+          cookie,
+          body: { recipeId: id, recipeName: 'Forged name', userId: secondId },
+        })
+      ).status,
+      201
+    );
+  }
+  let entries = (await (await api.request(path, { cookie })).json())
+    .generatedRecipes;
+  assert.deepEqual(
+    entries.map((entry) => entry.recipeName),
+    ['Pasta', 'Soup', 'Pasta']
+  );
+  assert.ok(
+    entries.every((entry) => !Number.isNaN(Date.parse(entry.generatedAt)))
+  );
+  assert.deepEqual(api.users.get(firstId).recipeProgress, []);
+  const otherCookie = await api.login(2);
+  assert.deepEqual(
+    (await (await api.request(path, { cookie: otherCookie })).json())
+      .generatedRecipes,
+    []
+  );
+  // Another login/session sees the same stored history.
+  const freshCookie = await api.login();
+  entries = (await (await api.request(path, { cookie: freshCookie })).json())
+    .generatedRecipes;
+  assert.equal(entries.length, 3);
+  api.users.get(firstId).generatedRecipes = Array.from(
+    { length: 100 },
+    () => entries[0]
+  );
+  await api.request(path, {
+    method: 'POST',
+    cookie,
+    body: { recipeId: missingId },
+  });
+  entries = (await (await api.request(path, { cookie })).json())
+    .generatedRecipes;
+  assert.equal(entries.length, 100);
+  assert.equal(entries[0].recipeName, 'Soup');
+});
+
+test('user schema supports existing users and stores generated recipe references and timestamps', async () => {
+  const user = new UserModel({
+    username: 'Cook',
+    email: 'cook@example.test',
+    password: passwordHash,
+  });
+  await user.validate();
+  assert.equal(user.generatedRecipes.length, 0);
+  user.generatedRecipes.push({
+    recipeId,
+    recipeName: 'Pasta',
+    image: '/pasta.jpg',
+  });
+  await user.validate();
+  assert.equal(String(user.generatedRecipes[0].recipeId), recipeId);
+  assert.ok(user.generatedRecipes[0].generatedAt instanceof Date);
 });

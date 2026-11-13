@@ -11,6 +11,7 @@ RecipeMe: a user puts in their meal preferences (could be dietary restrictions, 
   Can add recipes to cart
 
 Storyboards: https://docs.google.com/presentation/d/1b7oeCzfKdJEQcCVTSTVfzaZrkeR57z2XwsTsLqYWcfw/edit?usp=sharing
+Tech Specs: https://docs.google.com/document/d/1pdIhC4JA-qxDZK-3LEjxrh3H4m4STZ7NmyCCVDjdrKY/edit?tab=t.0 
 
 ## Run locally
 

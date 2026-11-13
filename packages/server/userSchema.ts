@@ -25,11 +25,26 @@ export type User = {
   password: string; /* bcrypt hash; never a plaintext password */
   favorites: string[]; /* array of recipe IDs */
   recipeProgress: RecipeProgress[];
+  generatedRecipes: {
+    recipeId: mongoose.Types.ObjectId;
+    recipeName: string;
+    image: string;
+    generatedAt: Date;
+  }[];
   settings: {
     servingSize: number;
     location: string;
     unitSystem: 'us' | 'metric';
     preferredFilters: SavedFilter[];
+    dietaryRestrictions: string[];
+    dislikes: string[];
+    allergies: string[];
+    notifications: {
+      dailySuggestions: boolean;
+      groceryItems: boolean;
+      weeklySummary: boolean;
+      marketing: boolean;
+    };
   };
 };
 
@@ -66,8 +81,32 @@ const userSchema = new Schema<User>(
         ],
         default: [],
       },
+      dietaryRestrictions: { type: [String], default: [] },
+      dislikes: { type: [String], default: [] },
+      allergies: { type: [String], default: [] },
+      notifications: {
+        dailySuggestions: { type: Boolean, default: true },
+        groceryItems: { type: Boolean, default: true },
+        weeklySummary: { type: Boolean, default: false },
+        marketing: { type: Boolean, default: false },
+      },
     },
 
+    generatedRecipes: {
+      type: [
+        {
+          recipeId: {
+            type: Schema.Types.ObjectId,
+            ref: 'Recipe',
+            required: true,
+          },
+          recipeName: { type: String, required: true },
+          image: { type: String, default: '' },
+          generatedAt: { type: Date, default: Date.now },
+        },
+      ],
+      default: [],
+    },
     recipeProgress: {
       type: [
         {
