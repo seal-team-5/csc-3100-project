@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import RecipeCard from '../components/RecipeCard';
+import CreateRecipeDialog from '../components/CreateRecipeDialog';
 import RecipeDialog from '../components/RecipeDialog';
 import Pagination from '../components/Pagination';
 import { FILTER_GROUPS, PREGNANCY_FILTER } from '../../../shared/recipeFilters';
@@ -46,6 +47,8 @@ export default function RecipeFinder({ username }: { username?: string }) {
       name.toLowerCase().includes(filterSearch.trim().toLowerCase())
     ),
   })).filter((group) => group.names.length > 0);
+  const [creatingRecipe, setCreatingRecipe] = useState(false);
+  const [creationMessage, setCreationMessage] = useState('');
 
   useEffect(() => {
     async function loadFavoriteIds() {
@@ -201,18 +204,31 @@ export default function RecipeFinder({ username }: { username?: string }) {
   return (
     <section className="home-page">
       {historyError && <p role="status">{historyError}</p>}
+      {creationMessage && <p role="status">{creationMessage}</p>}
       <div className="home-intro">
         <h1>
           {username ? `Hello, ${username}!` : 'Find your next favorite recipe'}
         </h1>
-        <button
-          className="primary-button show-recipe-button"
-          disabled={loading || !!error || !recipes.length}
-          onClick={showRecipe}
-          type="button"
-        >
-          Show me a recipe!
-        </button>
+        <div className="home-recipe-actions">
+          <button
+            className="primary-button show-recipe-button"
+            disabled={loading || !!error || !recipes.length}
+            onClick={showRecipe}
+            type="button"
+          >
+            Show me a recipe!
+          </button>
+          <button
+            className="secondary-button add-recipe-button"
+            type="button"
+            onClick={() => {
+              setCreationMessage('');
+              setCreatingRecipe(true);
+            }}
+          >
+            Add a recipe
+          </button>
+        </div>
       </div>
       <section className="filter-panel" aria-labelledby="filter-heading">
         <div className="filter-panel-header">
@@ -402,6 +418,20 @@ export default function RecipeFinder({ username }: { username?: string }) {
             )}
           </section>
         </>
+      )}
+      {creatingRecipe && (
+        <CreateRecipeDialog
+          filterGroups={filterGroups}
+          onClose={() => setCreatingRecipe(false)}
+          onCreated={(recipe) => {
+            setCreatingRecipe(false);
+            setRecipes((current) => [...current, recipe]);
+            setCreationMessage(
+              'Recipe saved! It is now available to the RecipeMe community.'
+            );
+            setRecipeResult(resultFor(recipe, []));
+          }}
+        />
       )}
       {recipeResult && (
         <RecipeDialog
