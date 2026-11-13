@@ -279,6 +279,7 @@ textarea {
   padding: 8px 15px 12px;
 }
 .recipe-card h3 {
+  height: 2lh;
   font-size: 16px;
   line-height: 22px;
   margin: 0 0 4px;

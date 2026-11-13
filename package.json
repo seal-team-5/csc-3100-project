@@ -18,7 +18,7 @@
     "dev:server": "npm run dev",
     "dev:client": "npm --prefix packages/client run dev",
     "build": "npm --prefix packages/client run build",
-    "test": "node --test packages/server/*.test.js",
+    "test": "node --test packages/server/*.test.js packages/client/src/lib/*.test.ts",
     "test:recipes": "node --env-file=.env --test packages/server/integration/recipes.test.js",
     "format": "npx prettier . --write",
     "lint": "npx eslint .",

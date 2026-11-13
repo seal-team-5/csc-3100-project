@@ -2,12 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import RecipeCard from '../components/RecipeCard';
 import RecipeDialog from '../components/RecipeDialog';
 import Pagination from '../components/Pagination';
-import {
-  compareByRating,
-  filterMatches,
-  getRecipeResult,
-  resultFor,
-} from '../lib/recipes';
+import { compareByRating, getRecipeResult, resultFor } from '../lib/recipes';
 import type {
   RecipeFilter,
   RecipeProgress,
@@ -37,6 +32,7 @@ export default function RecipeFinder({ username }: { username?: string }) {
   const [progress, setProgress] = useState<RecipeProgress[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [page, setPage] = useState(1);
+  const [historyError, setHistoryError] = useState('');
 
   useEffect(() => {
     async function loadFavoriteIds() {
@@ -114,13 +110,13 @@ export default function RecipeFinder({ username }: { username?: string }) {
     return () => controller.abort();
   }, []);
 
-  // Matching recipes, best rated first, split into pages.
+  // A recipe matches if resultFor says so: cuisine filters are OR,
+  // all other filter types are AND for now. Matches are sorted best rated
+  // first and split into pages.
   const matches = useMemo(
     () =>
       recipes
-        .filter((recipe) =>
-          selectedFilters.every((filter) => filterMatches(recipe, filter))
-        )
+        .filter((recipe) => resultFor(recipe, selectedFilters).exactMatch)
         .sort(compareByRating),
     [recipes, selectedFilters]
   );
@@ -136,6 +132,7 @@ export default function RecipeFinder({ username }: { username?: string }) {
       .getElementById('recipe-grid-heading')
       ?.scrollIntoView({ block: 'start' });
   };
+
   const activeRecipes = recipes.filter((recipe) =>
     progress.some(
       (item) => item.recipeName === recipe.name && item.status === 'in-progress'
@@ -155,13 +152,35 @@ export default function RecipeFinder({ username }: { username?: string }) {
   };
   const openRecipe = (recipe: RecipeSummary) =>
     setRecipeResult(resultFor(recipe, selectedFilters));
-  const showRecipe = () =>
-    setRecipeResult(
-      getRecipeResult(recipes, selectedFilters, recipeResult?.recipe.id)
+  const showRecipe = () => {
+    const result = getRecipeResult(
+      recipes,
+      selectedFilters,
+      recipeResult?.recipe.id
     );
+    setRecipeResult(result);
+    setHistoryError('');
+    if (!result) return;
+    void fetch('/api/recipe-history', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipeId: result.recipe.id }),
+    })
+      .then((response) => {
+        if (response.status === 401) {
+          setHistoryError('Sign in to save generated recipes to History.');
+        } else if (!response.ok) {
+          setHistoryError('This recipe could not be saved to History.');
+        }
+      })
+      .catch(() =>
+        setHistoryError('This recipe could not be saved to History.')
+      );
+  };
 
   return (
     <section className="home-page">
+      {historyError && <p role="status">{historyError}</p>}
       <div className="home-intro">
         <h1>
           {username ? `Hello, ${username}!` : 'Find your next favorite recipe'}
