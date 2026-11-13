@@ -361,7 +361,7 @@ export default function Settings() {
           aria-labelledby="notifications-heading"
           className="settings-card"
         >
-          <h2 id="notifications-heading">Notifications</h2>
+          <h2 id="notifications-heading">Email Notifications</h2>
           <p>
             Choose how Recipe Me keeps you informed about new matches and
             updates.
