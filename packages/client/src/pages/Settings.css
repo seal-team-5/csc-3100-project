@@ -1,3 +1,6 @@
+/* Settings.css */
+/* This file is for styling Settings.tsx */
+
 .settings-page {
   max-width: 800px;
   margin: 0 auto;
@@ -72,4 +75,26 @@
   align-items: center;
   gap: 1rem;
   margin-top: 1rem;
+}
+
+/* This makes the page a 2-column style layout */
+.settings-card {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  column-gap: 1rem;
+}
+.settings-card > h2,
+.settings-card > p,
+.settings-card > fieldset,
+.settings-card > .settings-notifications {
+  grid-column: 1 / -1;
+}
+.settings-card .settings-field input,
+.settings-card .settings-field select {
+  max-width: none;
+}
+@media (max-width: 600px) {
+  .settings-card {
+    grid-template-columns: 1fr;
+  }
 }
