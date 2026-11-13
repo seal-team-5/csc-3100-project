@@ -37,7 +37,7 @@ const app = createApp({
   sessionSecret: process.env.SESSION_SECRET,
   appOrigin:
     process.env.APP_ORIGIN ||
-    (production ? `http://localhost:${port}` : 'http://127.0.0.1:5173'),
+     (production ? `https://localhost:${port}` : 'http://localhost:5173'),
   production,
 });
 // Set an explicit trusted proxy network only when your HTTPS deployment needs it.
