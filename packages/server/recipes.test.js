@@ -20,6 +20,10 @@ const documents = [
     Ingredients: ['beans'],
     Instructions: ['Simmer.'],
     Filters: [{ type: 'category', name: 'Vegetarian' }],
+    Reviews: [
+      { userId: 'a', rating: 5, note: 'Great' },
+      { userId: 'b', rating: 4, note: '' },
+    ],
   },
 ];
 async function fixture(t, unavailable = false) {
@@ -35,11 +39,12 @@ async function fixture(t, unavailable = false) {
         async lean() {
           if (unavailable) throw new Error('offline');
           return projection
-            ? documents.map(({ _id, Image, Name, Filters }) => ({
+            ? documents.map(({ _id, Image, Name, Filters, Reviews }) => ({
                 _id,
                 Image,
                 Name,
                 Filters,
+                Reviews,
               }))
             : documents;
         },
@@ -82,23 +87,31 @@ test('recipe summaries project out details and expose stable IDs and filter grou
   assert.equal(response.status, 200);
   assert.equal(response.headers.get('cache-control'), 'no-store');
   const payload = await response.json();
-  assert.equal(api.projection(), 'Image Name Filters');
+  assert.equal(api.projection(), 'Image Name Filters Reviews');
   assert.deepEqual(payload.filterGroups, {
     cuisine: ['Italian'],
     category: ['Vegetarian'],
   });
-  assert.deepEqual(payload.recipes[0], {
+  const { averageRating, reviewCount, ...summaryFields } = payload.recipes[0];
+  assert.deepEqual(summaryFields, {
     id: documents[0]._id,
     image: '/one.jpg',
     name: 'Pasta',
     filters: documents[0].Filters,
   });
+  assert.equal(averageRating, null);
+  assert.equal(reviewCount, 0);
+  assert.equal('Reviews' in payload.recipes[0], false);
+  // Ratings are averaged on the server; individual reviews are not exposed.
+  assert.equal(payload.recipes[1].averageRating, 4.5);
+  assert.equal(payload.recipes[1].reviewCount, 2);
+  assert.equal('Reviews' in payload.recipes[1], false);
   assert.equal('ingredients' in payload.recipes[0], false);
   assert.equal('instructions' in payload.recipes[0], false);
   const detail = await api.request(`/api/recipes/${payload.recipes[0].id}`);
   assert.equal(detail.status, 200);
   assert.deepEqual((await detail.json()).recipe, {
-    ...payload.recipes[0],
+    ...summaryFields,
     ingredients: ['noodles'],
     instructions: ['Boil water.'],
   });

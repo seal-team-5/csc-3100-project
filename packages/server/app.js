@@ -82,10 +82,12 @@ export function createApp(options) {
     try {
       const summary = req.query.view === 'summary';
       const query = Recipe.find({});
-      if (summary) query.select('Image Name Filters');
+      if (summary) query.select('Image Name Filters Reviews');
       const documents = await query.lean();
       const recipes = documents.map((recipe) => ({
-        ...(summary ? { id: String(recipe._id) } : {}),
+        ...(summary
+          ? { id: String(recipe._id), ...ratingSummary(recipe.Reviews) }
+          : {}),
         image: recipe.Image,
         name: recipe.Name,
         ...(!summary
@@ -490,6 +492,17 @@ export function createApp(options) {
 }
 
 //helpers
+// Average rating and review count only; individual reviews are never exposed here.
+function ratingSummary(reviews = []) {
+  const reviewCount = reviews.length;
+  const total = reviews.reduce((sum, review) => sum + review.rating, 0);
+  return {
+    averageRating: reviewCount
+      ? Number((total / reviewCount).toFixed(1))
+      : null,
+    reviewCount,
+  };
+}
 function normalizeEmail(value) {
   return typeof value === 'string' ? value.trim().toLowerCase() : '';
 }

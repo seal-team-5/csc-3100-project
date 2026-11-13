@@ -4,6 +4,8 @@ export type RecipeSummary = {
   image: string;
   name: string;
   filters: RecipeFilter[];
+  averageRating?: number | null;
+  reviewCount?: number;
 };
 export type Recipe = RecipeSummary & {
   ingredients: string[];
@@ -21,6 +23,17 @@ export type RecipeProgress = {
   startedAt: string;
   completedAt?: string;
 };
+// Highest average rating first. Unrated recipes go last. Ties favor more
+// reviews, then alphabetical order so the order is stable.
+export function compareByRating(a: RecipeSummary, b: RecipeSummary) {
+  const left = a.averageRating ?? -1;
+  const right = b.averageRating ?? -1;
+  return (
+    right - left ||
+    (b.reviewCount ?? 0) - (a.reviewCount ?? 0) ||
+    a.name.localeCompare(b.name)
+  );
+}
 export function filterMatches(recipe: RecipeSummary, selected: RecipeFilter) {
   return recipe.filters.some(
     (filter) => filter.type === selected.type && filter.name === selected.name
