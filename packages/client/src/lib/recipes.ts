@@ -1,3 +1,5 @@
+import { PREGNANCY_FILTER } from '../../../shared/recipeFilters.ts';
+
 export type RecipeFilter = { name: string; type: string };
 export type RecipeSummary = {
   id: string;
@@ -65,8 +67,17 @@ export function getRecipeResult(
   filters: RecipeFilter[],
   previousId?: string
 ): RecipeResult | null {
-  if (!recipes.length) return null;
-  const ranked = recipes.map((recipe) => resultFor(recipe, filters));
+  // Keep Pregnancy selected even when relaxing other preferences for a closest match.
+  const pregnancySelected = filters.some(
+    (filter) =>
+      filter.type === PREGNANCY_FILTER.type &&
+      filter.name === PREGNANCY_FILTER.name
+  );
+  const eligible = pregnancySelected
+    ? recipes.filter((recipe) => filterMatches(recipe, PREGNANCY_FILTER))
+    : recipes;
+  if (!eligible.length) return null;
+  const ranked = eligible.map((recipe) => resultFor(recipe, filters));
   const fewestChanges = Math.min(
     ...ranked.map((result) => result.changedFilters.length)
   );

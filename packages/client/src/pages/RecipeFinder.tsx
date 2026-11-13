@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import RecipeCard from '../components/RecipeCard';
 import RecipeDialog from '../components/RecipeDialog';
 import Pagination from '../components/Pagination';
+import { FILTER_GROUPS, PREGNANCY_FILTER } from '../../../shared/recipeFilters';
 import { compareByRating, getRecipeResult, resultFor } from '../lib/recipes';
 import type {
   RecipeFilter,
@@ -16,7 +17,7 @@ type SummaryResponse = {
 };
 const PAGE_SIZE = 12;
 const filterLabel = (type: string) =>
-  type.charAt(0).toUpperCase() + type.slice(1);
+  FILTER_GROUPS.find((group) => group.type === type)?.label || type;
 
 export default function RecipeFinder({ username }: { username?: string }) {
   const [recipes, setRecipes] = useState<RecipeSummary[]>([]);
@@ -28,11 +29,23 @@ export default function RecipeFinder({ username }: { username?: string }) {
   const [reload, setReload] = useState(0);
   const [selectedFilters, setSelectedFilters] = useState<RecipeFilter[]>([]);
   const [expandedFilters, setExpandedFilters] = useState(false);
+  const [filterSearch, setFilterSearch] = useState('');
   const [recipeResult, setRecipeResult] = useState<RecipeResult | null>(null);
   const [progress, setProgress] = useState<RecipeProgress[]>([]);
   const [favoriteIds, setFavoriteIds] = useState<string[]>([]);
   const [page, setPage] = useState(1);
   const [historyError, setHistoryError] = useState('');
+  const pregnancySelected = selectedFilters.some(
+    (filter) =>
+      filter.type === PREGNANCY_FILTER.type &&
+      filter.name === PREGNANCY_FILTER.name
+  );
+  const visibleGroups = FILTER_GROUPS.map((group) => ({
+    ...group,
+    names: (filterGroups[group.type] || []).filter((name) =>
+      name.toLowerCase().includes(filterSearch.trim().toLowerCase())
+    ),
+  })).filter((group) => group.names.length > 0);
 
   useEffect(() => {
     async function loadFavoriteIds() {
@@ -160,7 +173,14 @@ export default function RecipeFinder({ username }: { username?: string }) {
     );
     setRecipeResult(result);
     setHistoryError('');
-    if (!result) return;
+    if (!result) {
+      setHistoryError(
+        pregnancySelected
+          ? 'No recipes are currently tagged for Pregnancy.'
+          : 'No recipes are available yet.'
+      );
+      return;
+    }
     void fetch('/api/recipe-history', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -246,7 +266,16 @@ export default function RecipeFinder({ username }: { username?: string }) {
           id="recipe-filter-options"
           hidden={!expandedFilters}
         >
-          {Object.entries(filterGroups).map(([type, names]) => (
+          <label className="filter-search">
+            Search filters
+            <input
+              type="search"
+              value={filterSearch}
+              onChange={(event) => setFilterSearch(event.target.value)}
+              placeholder="Try Italian, chicken, or baking"
+            />
+          </label>
+          {visibleGroups.map(({ type, names }) => (
             <fieldset className="filter-group" key={type}>
               <legend>{filterLabel(type)}</legend>
               <div className="filter-options">
@@ -271,6 +300,9 @@ export default function RecipeFinder({ username }: { username?: string }) {
               </div>
             </fieldset>
           ))}
+          {visibleGroups.length === 0 && (
+            <p role="status">No filters match your search.</p>
+          )}
         </div>
       </section>
       {loading && (
@@ -335,8 +367,9 @@ export default function RecipeFinder({ username }: { username?: string }) {
             ) : !matches.length ? (
               <div className="recipe-state">
                 <p>
-                  No recipes match every filter. Clear a filter to browse more,
-                  or choose “Show me a recipe” for the closest match.
+                  {pregnancySelected
+                    ? 'No recipes match these filters. Suggestions will keep Pregnancy selected and only use recipes carrying that tag.'
+                    : 'No recipes match every filter. Clear a filter to browse more, or choose “Show me a recipe” for the closest match.'}
                 </p>
                 <button
                   className="secondary-button"

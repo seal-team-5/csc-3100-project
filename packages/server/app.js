@@ -1,4 +1,8 @@
 import bcrypt from 'bcrypt';
+import {
+  normalizeRecipeFilters,
+  PREGNANCY_FILTER,
+} from '../shared/recipeFilters.ts';
 import { hashPassword, validPassword, BCRYPT_ROUNDS } from './password.js';
 import {
   configureServer,
@@ -96,10 +100,11 @@ export function createApp(options) {
               instructions: recipe.Instructions,
             }
           : {}),
-        filters: recipe.Filters.map(({ name, type }) => ({ name, type })),
+        filters: normalizeRecipeFilters(recipe.Filters),
       }));
       if (!summary) return res.json({ recipes });
       const filterGroups = Object.create(null);
+      filterGroups[PREGNANCY_FILTER.type] = [PREGNANCY_FILTER.name];
       for (const recipe of recipes) {
         for (const { type, name } of recipe.filters) {
           filterGroups[type] ||= [];
@@ -131,7 +136,7 @@ export function createApp(options) {
           name: recipe.Name,
           ingredients: recipe.Ingredients,
           instructions: recipe.Instructions,
-          filters: recipe.Filters.map(({ name, type }) => ({ name, type })),
+          filters: normalizeRecipeFilters(recipe.Filters),
         },
       });
     } catch (error) {
@@ -494,10 +499,7 @@ export function createApp(options) {
     user.settings.servingSize = servingSize;
     user.settings.location = location.trim();
     user.settings.unitSystem = unitSystem;
-    user.settings.preferredFilters = preferredFilters.map(({ name, type }) => ({
-      name,
-      type,
-    }));
+    user.settings.preferredFilters = normalizeRecipeFilters(preferredFilters);
     await user.save();
 
     return res.json({
@@ -544,9 +546,6 @@ function publicSettings(user) {
     servingSize: s.servingSize ?? 2,
     location: s.location ?? '',
     unitSystem: s.unitSystem ?? 'us',
-    preferredFilters: (s.preferredFilters || []).map(({ name, type }) => ({
-      name,
-      type,
-    })),
+    preferredFilters: normalizeRecipeFilters(s.preferredFilters),
   };
 }

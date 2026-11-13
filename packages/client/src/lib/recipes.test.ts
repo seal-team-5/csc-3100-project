@@ -14,6 +14,18 @@ const italian = { type: 'cuisine', name: 'Italian' };
 const moroccan = { type: 'cuisine', name: 'Moroccan' };
 const vegetarian = { type: 'category', name: 'Vegetarian' };
 const beef = { type: 'category', name: 'Beef' };
+const pregnancy = { type: 'life_stage', name: 'Pregnancy' };
+
+test('Pregnancy is preserved when choosing a closest match', () => {
+  const tagged = recipe('tagged', [moroccan, pregnancy]);
+  const untagged = recipe('untagged', [italian]);
+  assert.equal(getRecipeResult([untagged], [pregnancy]), null);
+  assert.equal(
+    getRecipeResult([untagged, tagged], [pregnancy, italian])?.recipe.id,
+    tagged.id
+  );
+  assert.equal(getRecipeResult([tagged], [pregnancy])?.exactMatch, true);
+});
 
 const italianVeg = recipe('italian-veg', [italian, vegetarian]);
 const moroccanBeef = recipe('moroccan-beef', [moroccan, beef]);

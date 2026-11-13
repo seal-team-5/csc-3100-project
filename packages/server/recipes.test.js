@@ -19,7 +19,10 @@ const documents = [
     Name: 'Soup',
     Ingredients: ['beans'],
     Instructions: ['Simmer.'],
-    Filters: [{ type: 'category', name: 'Vegetarian' }],
+    Filters: [
+      { type: 'category', name: 'Vegetarian' },
+      { type: 'tag', name: 'vegetarian, Delicious' },
+    ],
     Reviews: [
       { userId: 'a', rating: 5, note: 'Great' },
       { userId: 'b', rating: 4, note: '' },
@@ -89,8 +92,9 @@ test('recipe summaries project out details and expose stable IDs and filter grou
   const payload = await response.json();
   assert.equal(api.projection(), 'Image Name Filters Reviews');
   assert.deepEqual(payload.filterGroups, {
+    life_stage: ['Pregnancy'],
     cuisine: ['Italian'],
-    category: ['Vegetarian'],
+    diet: ['Vegetarian'],
   });
   const { averageRating, reviewCount, ...summaryFields } = payload.recipes[0];
   assert.deepEqual(summaryFields, {
@@ -108,6 +112,16 @@ test('recipe summaries project out details and expose stable IDs and filter grou
   assert.equal('Reviews' in payload.recipes[1], false);
   assert.equal('ingredients' in payload.recipes[0], false);
   assert.equal('instructions' in payload.recipes[0], false);
+  assert.deepEqual(payload.recipes[1].filters, [
+    { type: 'diet', name: 'Vegetarian' },
+  ]);
+  const vegetarianDetail = await api.request(
+    `/api/recipes/${documents[1]._id}`
+  );
+  assert.deepEqual(
+    (await vegetarianDetail.json()).recipe.filters,
+    payload.recipes[1].filters
+  );
   const detail = await api.request(`/api/recipes/${payload.recipes[0].id}`);
   assert.equal(detail.status, 200);
   assert.deepEqual((await detail.json()).recipe, {
