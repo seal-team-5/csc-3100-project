@@ -34,3 +34,42 @@
   flex-wrap: wrap;
   gap: 0.5rem;
 }
+
+.settings-notifications {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1rem;
+}
+.notification-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid #e2e5ea;
+  border-radius: 12px;
+  background: #f9fafb;
+  cursor: pointer;
+}
+.notification-option input {
+  width: 1.1rem;
+  height: 1.1rem;
+  margin-top: 0.15rem;
+  accent-color: #111827;
+}
+.notification-option span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+.notification-option small {
+  color: #6b7280;
+}
+.settings-actions {
+  display: flex;
+  flex-direction: row-reverse;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+  margin-top: 1rem;
+}
