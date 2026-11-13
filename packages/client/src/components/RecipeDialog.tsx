@@ -7,6 +7,7 @@ export default function RecipeDialog({
   result,
   onClose,
   onRegenerate,
+  showRegenerate = true,
   onProgress,
   favoriteIds = [],
   onFavoritesChange = () => {},
@@ -14,6 +15,7 @@ export default function RecipeDialog({
   result: RecipeResult;
   onClose: () => void;
   onRegenerate: () => void;
+  showRegenerate?: boolean;
   onProgress: (progress: RecipeProgress[]) => void;
   favoriteIds?: string[];
   onFavoritesChange: (favorites: string[]) => void;
@@ -303,14 +305,16 @@ export default function RecipeDialog({
               </section>
             </>
           )}
-          <button
-            className="regenerate-button secondary-button"
-            onClick={onRegenerate}
-            disabled={saving}
-            type="button"
-          >
-            Show me another recipe
-          </button>
+          {showRegenerate && (
+            <button
+              className="regenerate-button secondary-button"
+              onClick={onRegenerate}
+              disabled={saving}
+              type="button"
+            >
+              Show me another recipe
+            </button>
+          )}
         </div>
       </article>
     </dialog>

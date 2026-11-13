@@ -18,6 +18,8 @@ export type RecipeProgress = {
   recipeId?: string;
   recipeName: string;
   status: 'in-progress' | 'completed';
+  startedAt: string;
+  completedAt?: string;
 };
 export function filterMatches(recipe: RecipeSummary, selected: RecipeFilter) {
   return recipe.filters.some(
