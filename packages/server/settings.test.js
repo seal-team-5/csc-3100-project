@@ -1,3 +1,6 @@
+//seetings.test.js
+//Testing for Settings & Preferences page
+
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { once } from 'node:events';
@@ -107,4 +110,110 @@ test('a user with no saved settings gets the defaults', async (t) => {
   });
   assert.equal(payload.username, 'Test Cook');
   assert.equal(payload.email, 'cook@example.test');
+});
+
+const validBody = {
+  username: 'Test Cook',
+  servingSize: 4,
+  location: 'Testville, CA',
+  unitSystem: 'metric',
+  preferredFilters: [{ name: 'Italian', type: 'cuisine' }],
+};
+
+test('PUT saves every field and GET returns them', async (t) => {
+  const api = await fixture(t);
+  api.addUser();
+  const cookie = await api.login();
+  const body = {
+    ...validBody,
+    dietaryRestrictions: ['  Vegetarian  ', 'No shellfish'],
+    dislikes: ['Olives'],
+    allergies: ['Peanuts'],
+    notifications: {
+      dailySuggestions: false,
+      groceryItems: true,
+      weeklySummary: true,
+      marketing: false,
+    },
+  };
+  const response = await api.request('/api/settings', {
+    method: 'PUT',
+    cookie,
+    body,
+  });
+  assert.equal(response.status, 200);
+
+  const { settings } = await (
+    await api.request('/api/settings', { cookie })
+  ).json();
+  assert.equal(settings.servingSize, 4);
+  assert.equal(settings.location, 'Testville, CA');
+  assert.equal(settings.unitSystem, 'metric');
+  assert.deepEqual(settings.preferredFilters, [
+    { name: 'Italian', type: 'cuisine' },
+  ]);
+  // Entries are trimmed before they are saved.
+  assert.deepEqual(settings.dietaryRestrictions, [
+    'Vegetarian',
+    'No shellfish',
+  ]);
+  assert.deepEqual(settings.dislikes, ['Olives']);
+  assert.deepEqual(settings.allergies, ['Peanuts']);
+  assert.deepEqual(settings.notifications, body.notifications);
+});
+
+test('PUT without the new fields keeps the saved values', async (t) => {
+  const api = await fixture(t);
+  api.addUser();
+  const cookie = await api.login();
+  await api.request('/api/settings', {
+    method: 'PUT',
+    cookie,
+    body: {
+      ...validBody,
+      allergies: ['Peanuts'],
+      notifications: {
+        dailySuggestions: false,
+        groceryItems: false,
+        weeklySummary: true,
+        marketing: true,
+      },
+    },
+  });
+
+  // An older client that only knows the original fields saves again.
+  const response = await api.request('/api/settings', {
+    method: 'PUT',
+    cookie,
+    body: { ...validBody, servingSize: 6 },
+  });
+  assert.equal(response.status, 200);
+
+  const { settings } = await (
+    await api.request('/api/settings', { cookie })
+  ).json();
+  assert.equal(settings.servingSize, 6);
+  assert.deepEqual(settings.allergies, ['Peanuts']);
+  assert.equal(settings.notifications.weeklySummary, true);
+  assert.equal(settings.notifications.marketing, true);
+});
+
+test('an empty list clears a saved list', async (t) => {
+  const api = await fixture(t);
+  api.addUser();
+  const cookie = await api.login();
+  await api.request('/api/settings', {
+    method: 'PUT',
+    cookie,
+    body: { ...validBody, dislikes: ['Olives', 'Blue cheese'] },
+  });
+  await api.request('/api/settings', {
+    method: 'PUT',
+    cookie,
+    body: { ...validBody, dislikes: [] },
+  });
+  const { settings } = await (
+    await api.request('/api/settings', { cookie })
+  ).json();
+  assert.deepEqual(settings.dislikes, []);
 });
