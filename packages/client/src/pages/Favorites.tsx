@@ -4,7 +4,11 @@ recipes and allows them to view recipe details in a dialog.
 */
 
 import { useEffect, useState } from 'react';
-import type { RecipeResult, RecipeSummary } from '../lib/recipes';
+import type {
+  RecipeProgress,
+  RecipeResult,
+  RecipeSummary,
+} from '../lib/recipes';
 import RecipeCard from '../components/RecipeCard';
 import RecipeDialog from '../components/RecipeDialog';
 
@@ -18,6 +22,7 @@ export default function Favorites() {
   const [selectedRecipe, setSelectedRecipe] = useState<RecipeSummary | null>(
     null
   );
+  const [progress, setProgress] = useState<RecipeProgress[]>([]);
   const [message, setMessage] = useState('Loading favorites...');
 
   // Load the user's favorite recipes when the component mounts
@@ -37,6 +42,14 @@ export default function Favorites() {
 
         setFavoriteIds(userData.user.favorites);
         setRecipes(recipeData.recipes);
+
+        // Progress is optional: it only decides which progress button to show.
+        const progressResponse = await fetch('/api/recipe-progress');
+        if (progressResponse.ok) {
+          const progressData: { recipeProgress: RecipeProgress[] } =
+            await progressResponse.json();
+          setProgress(progressData.recipeProgress);
+        }
         setMessage('');
       } catch {
         setMessage('Could not load favorite recipes.');
@@ -85,7 +98,8 @@ export default function Favorites() {
           result={dialogResult}
           onClose={() => setSelectedRecipe(null)}
           onRegenerate={() => setSelectedRecipe(null)}
-          onProgress={() => {}}
+          progress={progress}
+          onProgress={setProgress}
           favoriteIds={favoriteIds}
           onFavoritesChange={setFavoriteIds}
         />

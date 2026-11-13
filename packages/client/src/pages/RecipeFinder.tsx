@@ -375,6 +375,7 @@ export default function RecipeFinder({ username }: { username?: string }) {
           result={recipeResult}
           onClose={() => setRecipeResult(null)}
           onRegenerate={showRecipe}
+          progress={progress}
           onProgress={setProgress}
           favoriteIds={favoriteIds}
           onFavoritesChange={setFavoriteIds}

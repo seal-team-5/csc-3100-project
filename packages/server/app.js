@@ -258,6 +258,24 @@ export function createApp(options) {
     await user.save();
     return res.json({ recipeProgress: user.recipeProgress });
   });
+  // removes a recipe's progress entry for the signed-in user (e.g. "Remove from Completed").
+  app.delete('/api/recipe-progress/:recipeId', async (req, res) => {
+    const user = await getAuthenticatedUser(req);
+    if (!user) return res.status(401).json({ error: 'Please log in.' });
+    const recipeId = req.params.recipeId.toLowerCase();
+    if (!/^[a-f\d]{24}$/.test(recipeId)) {
+      return res.status(400).json({ error: 'Invalid recipe ID.' });
+    }
+    // Older entries have no recipeId, so also match them by recipe name.
+    const recipe = await Recipe.findById(recipeId);
+    user.recipeProgress = (user.recipeProgress || []).filter((item) =>
+      item.recipeId
+        ? String(item.recipeId).toLowerCase() !== recipeId
+        : !recipe || item.recipeName !== recipe.Name
+    );
+    await user.save();
+    return res.json({ recipeProgress: user.recipeProgress });
+  });
   // 1. Register: validate input, hash the password, then save the user.
   app.post('/api/auth/register', registerLimiter, async (req, res) => {
     const { username, phone, password } = req.body || {};

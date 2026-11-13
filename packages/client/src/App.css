@@ -335,19 +335,55 @@ textarea {
 .recipe-modal {
   padding: 0;
   border: 0;
-  border-radius: 24px;
   width: min(540px, calc(100% - 32px));
-  max-height: calc(100dvh - 32px);
-  overflow: auto;
+  max-height: none;
+  overflow: visible; /* lets the close button sit outside the card */
   color: var(--recipe-ink);
-  background: white;
-  box-shadow: 0 12px 32px #00000026;
+  background: transparent;
 }
 .recipe-modal::backdrop {
   background: #0f111ab3;
 }
 .recipe-dialog-card {
+  display: flex;
+  flex-direction: column;
   width: 100%;
+  max-height: calc(100dvh - 120px);
+  overflow: hidden;
+  border-radius: 24px;
+  background: white;
+  box-shadow: 0 12px 32px #00000026;
+}
+.recipe-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.dialog-status {
+  position: absolute;
+  top: calc(100% + 12px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: max-content;
+  max-width: 100%;
+  margin: 0;
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  line-height: 1.4;
+  text-align: center;
+  color: var(--recipe-ink);
+  background: white;
+  box-shadow: 0 4px 12px #00000026;
+}
+.dialog-status:empty {
+  display: none;
+}
+.recipe-dialog-footer {
+  flex-shrink: 0;
+  padding: 16px 28px;
+  border-top: 1px solid var(--recipe-border);
+  background: white;
 }
 .recipe-banner {
   position: relative;
@@ -362,8 +398,8 @@ textarea {
 }
 .close-button {
   position: absolute;
-  top: 16px;
-  right: 16px;
+  top: -52px;
+  right: 0;
   display: grid;
   place-items: center;
   width: 36px;
@@ -464,6 +500,27 @@ textarea {
   flex-wrap: wrap;
   gap: 12px;
 }
+.status-select {
+  display: flex;
+  flex: 1.5;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.status-select select {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--recipe-border);
+  border-radius: 12px;
+  font: inherit;
+  font-weight: 500;
+  color: var(--recipe-ink);
+  background: white;
+}
 .recipe-progress-actions button {
   flex: 1;
 }
@@ -514,6 +571,9 @@ textarea {
   }
   .recipe-content {
     padding: 20px;
+  }
+  .recipe-dialog-footer {
+    padding: 12px 20px;
   }
 }
 @media (prefers-reduced-motion: reduce) {
