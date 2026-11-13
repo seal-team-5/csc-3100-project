@@ -11,6 +11,75 @@ const PREFERENCE_TYPES = ['category', 'cuisine'];
 const typeLabel = (type: string) =>
   type.charAt(0).toUpperCase() + type.slice(1);
 
+type Notifications = {
+  dailySuggestions: boolean;
+  groceryItems: boolean;
+  weeklySummary: boolean;
+  marketing: boolean;
+};
+
+const DEFAULT_NOTIFICATIONS: Notifications = {
+  dailySuggestions: true,
+  groceryItems: true,
+  weeklySummary: false,
+  marketing: false,
+};
+
+const TEXT_PREFERENCES = [
+  {
+    key: 'dietaryRestrictions',
+    label: 'Dietary Restrictions',
+    placeholder: 'e.g. Vegetarian, No shellfish',
+  },
+  {
+    key: 'dislikes',
+    label: 'Dislikes',
+    placeholder: 'e.g. Blue cheese, Olives',
+  },
+  {
+    key: 'allergies',
+    label: 'Allergies',
+    placeholder: 'e.g. Peanuts, Dairy',
+  },
+] as const;
+
+const NOTIFICATION_OPTIONS: {
+  key: keyof Notifications;
+  title: string;
+  description: string;
+}[] = [
+  {
+    key: 'dailySuggestions',
+    title: 'Daily recipe suggestions',
+    description:
+      'Get a fresh recipe match every morning based on your preferences.',
+  },
+  {
+    key: 'groceryItems',
+    title: 'New grocery list items',
+    description:
+      'Receive reminders when a saved recipe adds new pantry staples.',
+  },
+  {
+    key: 'weeklySummary',
+    title: 'Weekly meal planning summary',
+    description:
+      'See a weekly digest of saved recipes and suggested meal plans.',
+  },
+  {
+    key: 'marketing',
+    title: 'Marketing and product updates',
+    description:
+      'Hear about new features, seasonal collections, and partner offers.',
+  },
+];
+
+const toList = (text: string) =>
+  text
+    .split(',')
+    .map((item) => item.trim())
+    .filter(Boolean);
+
 export default function Settings() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -25,6 +94,11 @@ export default function Settings() {
   const [preferred, setPreferred] = useState<RecipeFilter[]>([]);
   const [filterGroups, setFilterGroups] = useState<Record<string, string[]>>(
     {}
+  );
+
+  const [textPrefs, setTextPrefs] = useState<Record<string, string>>({});
+  const [notifications, setNotifications] = useState<Notifications>(
+    DEFAULT_NOTIFICATIONS
   );
 
   const [saving, setSaving] = useState(false);
