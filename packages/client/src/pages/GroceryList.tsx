@@ -1,4 +1,5 @@
 
+
 import { useEffect, useState } from 'react';
 
 type RecipeProgress = {
@@ -11,8 +12,13 @@ type Recipe = {
   ingredients: string[];
 };
 
+type RecipeGroup = {
+  name: string;
+  ingredients: string[];
+};
+
 export default function GroceryList() {
-  const [ingredients, setIngredients] = useState<string[]>([]);
+  const [recipeGroups, setRecipeGroups] = useState<RecipeGroup[]>([]);
   const [checked, setChecked] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
@@ -45,17 +51,21 @@ export default function GroceryList() {
 
         const allRecipes: Recipe[] = recipesData.recipes ?? recipesData;
 
-        const groceryItems = [
-          ...new Set(
-            allRecipes
-              .filter((recipe) => inProgressNames.has(recipe.name))
-              .flatMap((recipe) => recipe.ingredients ?? [])
-              .map((ingredient) => ingredient.trim())
-              .filter(Boolean)
-          ),
-        ];
+        const groups: RecipeGroup[] = allRecipes
+          .filter((recipe) => inProgressNames.has(recipe.name))
+          .map((recipe) => ({
+            name: recipe.name,
+            ingredients: [
+              ...new Set(
+                (recipe.ingredients ?? [])
+                  .map((ingredient) => ingredient.trim())
+                  .filter(Boolean)
+              ),
+            ],
+          }))
+          .filter((recipe) => recipe.ingredients.length > 0);
 
-        setIngredients(groceryItems);
+        setRecipeGroups(groups);
         setChecked([]);
       } catch {
         setError('Could not load your grocery list. Please try again.');
@@ -67,17 +77,29 @@ export default function GroceryList() {
     loadGroceryList();
   }, [reload]);
 
-  function toggleIngredient(ingredient: string) {
+  function getIngredientId(recipeName: string, ingredient: string) {
+    return `${recipeName}::${ingredient}`;
+  }
+
+  function toggleIngredient(recipeName: string, ingredient: string) {
+    const id = getIngredientId(recipeName, ingredient);
+
     setChecked((previous) =>
-      previous.includes(ingredient)
-        ? previous.filter((item) => item !== ingredient)
-        : [...previous, ingredient]
+      previous.includes(id)
+        ? previous.filter((item) => item !== id)
+        : [...previous, id]
     );
   }
 
-  const remaining = ingredients.length - checked.length;
-  const progress = ingredients.length
-    ? (checked.length / ingredients.length) * 100
+  const totalIngredients = recipeGroups.reduce(
+    (total, recipe) => total + recipe.ingredients.length,
+    0
+  );
+
+  const remaining = totalIngredients - checked.length;
+
+  const progress = totalIngredients
+    ? (checked.length / totalIngredients) * 100
     : 0;
 
   return (
@@ -111,11 +133,11 @@ export default function GroceryList() {
           <div className="recipe-section-heading">
             <h2 id="grocery-heading">Your Ingredients</h2>
             <span>
-              {ingredients.length} {ingredients.length === 1 ? 'item' : 'items'}
+              {totalIngredients} {totalIngredients === 1 ? 'item' : 'items'}
             </span>
           </div>
 
-          {ingredients.length === 0 ? (
+          {recipeGroups.length === 0 ? (
             <p className="recipe-state">
               No ingredients yet. Mark a recipe as in progress to start your
               grocery list!
@@ -127,13 +149,14 @@ export default function GroceryList() {
                   <span>{checked.length} completed</span>
                   <span>{remaining} remaining</span>
                 </div>
+
                 <div
                   className="grocery-progress-track"
                   role="progressbar"
                   aria-label="Grocery list completion"
                   aria-valuenow={checked.length}
                   aria-valuemin={0}
-                  aria-valuemax={ingredients.length}
+                  aria-valuemax={totalIngredients}
                 >
                   <div
                     className="grocery-progress-fill"
@@ -142,24 +165,36 @@ export default function GroceryList() {
                 </div>
               </div>
 
-              <ul className="grocery-items">
-                {ingredients.map((ingredient) => {
-                  const isChecked = checked.includes(ingredient);
+              {recipeGroups.map((recipe) => (
+                <div className="grocery-recipe-group" key={recipe.name}>
+                  <h3>{recipe.name}</h3>
 
-                  return (
-                    <li className="grocery-item" key={ingredient}>
-                      <label className={isChecked ? 'checked' : ''}>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggleIngredient(ingredient)}
-                        />
-                        <span>{ingredient}</span>
-                      </label>
-                    </li>
-                  );
-                })}
-              </ul>
+                  <ul className="grocery-items">
+                    {recipe.ingredients.map((ingredient) => {
+                      const id = getIngredientId(recipe.name, ingredient);
+                      const isChecked = checked.includes(id);
+
+                      return (
+                        <li
+                          className="grocery-item"
+                          key={id}
+                        >
+                          <label className={isChecked ? 'checked' : ''}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() =>
+                                toggleIngredient(recipe.name, ingredient)
+                              }
+                            />
+                            <span>{ingredient}</span>
+                          </label>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              ))}
 
               {checked.length > 0 && (
                 <button
