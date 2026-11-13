@@ -1,3 +1,4 @@
+import { recipeInput } from './recipeInput.js';
 import bcrypt from 'bcrypt';
 import {
   normalizeRecipeFilters,
@@ -79,6 +80,35 @@ export function createApp(options) {
     return res.json({
       favorites: user.favorites,
     });
+  });
+
+  // New recipes are shared with all users; creation requires a signed-in account.
+  app.post('/api/recipes', async (req, res) => {
+    const user = await getAuthenticatedUser(req);
+    if (!user)
+      return res.status(401).json({ error: 'Please log in to add a recipe.' });
+    const input = recipeInput(req.body || {});
+    if (input.error) return res.status(400).json({ error: input.error });
+    try {
+      const recipe = await Recipe.create(input.recipe);
+      return res.status(201).json({
+        recipe: {
+          id: String(recipe._id),
+          name: recipe.Name,
+          image: recipe.Image,
+          ingredients: recipe.Ingredients,
+          instructions: recipe.Instructions,
+          filters: normalizeRecipeFilters(recipe.Filters),
+          averageRating: null,
+          reviewCount: 0,
+        },
+      });
+    } catch (error) {
+      console.error('Recipe creation failed:', error.name);
+      return res
+        .status(503)
+        .json({ error: 'Unable to save your recipe. Please try again.' });
+    }
   });
 
   // returns all recipes, or a summary of each recipe if the query parameter view=summary is present.
