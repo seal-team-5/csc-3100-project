@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import RecipeCard from '../components/RecipeCard';
 import RecipeDialog from '../components/RecipeDialog';
-import { filterMatches, getRecipeResult, resultFor } from '../lib/recipes';
+import { getRecipeResult, resultFor } from '../lib/recipes';
 import type {
   RecipeFilter,
   RecipeProgress,
@@ -106,13 +106,15 @@ export default function RecipeFinder({ username }: { username?: string }) {
     return () => controller.abort();
   }, []);
 
+  // A recipe matches if resultFor says so: cuisine filters are OR,
+  // all other filter types are AND for now.
+
   const matches = useMemo(
     () =>
-      recipes.filter((recipe) =>
-        selectedFilters.every((filter) => filterMatches(recipe, filter))
-      ),
+      recipes.filter((recipe) => resultFor(recipe, selectedFilters).exactMatch),
     [recipes, selectedFilters]
   );
+
   const activeRecipes = recipes.filter((recipe) =>
     progress.some(
       (item) => item.recipeName === recipe.name && item.status === 'in-progress'
