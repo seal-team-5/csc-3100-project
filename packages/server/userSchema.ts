@@ -36,6 +36,15 @@ export type User = {
     location: string;
     unitSystem: 'us' | 'metric';
     preferredFilters: SavedFilter[];
+    dietaryRestrictions: string[];
+    dislikes: string[];
+    allergies: string[];
+    notifications: {
+      dailySuggestions: boolean;
+      groceryItems: boolean;
+      weeklySummary: boolean;
+      marketing: boolean;
+    };
   };
 };
 
@@ -71,6 +80,15 @@ const userSchema = new Schema<User>(
           },
         ],
         default: [],
+      },
+      dietaryRestrictions: { type: [String], default: [] },
+      dislikes: { type: [String], default: [] },
+      allergies: { type: [String], default: [] },
+      notifications: {
+        dailySuggestions: { type: Boolean, default: true },
+        groceryItems: { type: Boolean, default: true },
+        weeklySummary: { type: Boolean, default: false },
+        marketing: { type: Boolean, default: false },
       },
     },
 
