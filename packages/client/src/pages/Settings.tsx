@@ -127,6 +127,15 @@ export default function Settings() {
         setLocation(data.settings.location);
         setUnitSystem(data.settings.unitSystem);
         setPreferred(data.settings.preferredFilters);
+        setTextPrefs(
+          Object.fromEntries(
+            TEXT_PREFERENCES.map(({ key }) => [
+              key,
+              (data.settings[key] ?? []).join(', '),
+            ])
+          )
+        );
+        setNotifications(data.settings.notifications ?? DEFAULT_NOTIFICATIONS);
         setFilterGroups(recipeData.filterGroups ?? {});
       } catch {
         if (!controller.signal.aborted)
@@ -168,6 +177,13 @@ export default function Settings() {
           location,
           unitSystem,
           preferredFilters: preferred,
+          ...Object.fromEntries(
+            TEXT_PREFERENCES.map(({ key }) => [
+              key,
+              toList(textPrefs[key] ?? ''),
+            ])
+          ),
+          notifications,
         }),
       });
       if (!response.ok) {
