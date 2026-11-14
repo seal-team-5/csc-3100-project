@@ -18,10 +18,30 @@
   background: white;
   box-shadow: 0 6px 18px #00000005;
 }
-.navbar h2 {
+.navbar {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
+
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+
   margin: 0;
-  font-size: 20px;
+  padding: 8px 24px;
+  min-height: 64px;
+  box-sizing: border-box;
+
+  border: 1px solid var(--recipe-border);
+  border-radius: 0 0 16px 16px;
+  background: white;
+  box-shadow: 0 6px 18px #00000005;
 }
+
 .nav-links {
   display: flex;
   flex-wrap: wrap;
@@ -37,8 +57,9 @@
   color: var(--recipe-ink);
 }
 .app-content {
-  padding: 24px 32px 32px;
+  padding: 88px 32px 32px;
 }
+
 .home-page {
   width: 100%;
 }
