@@ -73,12 +73,12 @@ favorites. The request body must include a valid MongoDB recipe ID:
 
 ```json
 { "recipeId": "..." }
+```
 
 If the recipe is already saved, the endpoint removes it; otherwise, it adds it.
 The response returns the updated favorites array. Favorites are stored on the
 user document as recipe IDs, while the Favorites page loads recipe summaries
-from GET /api/recipes?view=summary and displays recipes with matching IDs.
-```
+from `GET /api/recipes?view=summary` and displays recipes with matching IDs.
 
 For an empty database, the optional command below imports real recipes from
 TheMealDB into the configured database. It writes recipe records, so run it only
@@ -87,6 +87,43 @@ when you intend to populate that database:
 ```bash
 npx tsx packages/server/seed.ts
 ```
+
+## Deployment (Vercel)
+
+The frontend is served as static files from `packages/client/dist`, and the
+Express API runs as a single Vercel serverless function (`api/index.js`) that
+Vercel reaches through the `/api/*` rewrite in `vercel.json`.
+
+Set these environment variables in Vercel (Settings, Environment Variables,
+Production), then redeploy:
+
+| Variable         | Value                                                           |
+| ---------------- | --------------------------------------------------------------- |
+| `MONGO_URI`      | MongoDB Atlas connection string, including the database name    |
+| `SESSION_SECRET` | Random secret, at least 32 bytes                                |
+| `APP_ORIGIN`     | Exact production URL, for example `https://your-app.vercel.app` |
+
+In MongoDB Atlas, open Network Access and allow `0.0.0.0/0`, because Vercel
+uses changing IP addresses. Leave Root Directory empty in the Vercel project
+settings so the repository root is used.
+
+### Rebuilding the API bundle
+
+`api/index.js` is a generated file. Vercel cannot run the server's TypeScript
+files directly, so `npm run build:api` bundles `vercel/entry.js` and the server
+code into plain JavaScript. The generated file is committed to the repository.
+
+After changing anything in `packages/server`, `packages/shared`, or `vercel/`,
+run:
+
+```bash
+npm run build:api
+git add api/index.js
+```
+
+Client-only changes do not need this step. A pre-commit hook in `.githooks/`
+does it automatically when server files are part of a commit. It is enabled by
+`npm install`, or manually with `git config core.hooksPath .githooks`.
 
 ## Code Style:
 
