@@ -25,7 +25,8 @@
     "start": "node --env-file=.env packages/server/index.js",
     "dev": "node --watch --env-file=.env packages/server/index.js",
     "dev:demo": "node packages/server/demo.js",
-    "test:reviews:db": "node --env-file=.env --test packages/server/integration/reviews.test.js"
+    "test:reviews:db": "node --env-file=.env --test packages/server/integration/reviews.test.js",
+    "build:api": "esbuild vercel/entry.js --bundle --platform=node --format=esm --packages=external --outfile=api/index.js"
   },
   "dependencies": {
     "bcrypt": "^6.0.0",
@@ -47,6 +48,7 @@
     "@swc/jest": "^0.2.39",
     "@types/bcrypt": "^6.0.0",
     "@types/node": "^26.6.4",
+    "esbuild": "^0.28.2",
     "eslint": "^9.39.5",
     "eslint-plugin-react": "^7.37.5",
     "globals": "^17.14.0",
