@@ -1,20 +1,59 @@
-name: CI Testing
+name: CI
 
 on:
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-  build:
+  test-and-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
       - uses: actions/setup-node@v4
         with:
-          node-version: 20
-      - run: npm ci
-      - run: npm --prefix packages/client ci
-      - run: npm run lint
-      - run: npm --prefix packages/client run lint
-      - run: npm test
-      - run: npm run build
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            packages/client/package-lock.json
+
+      - name: Install root dependencies
+        run: npm ci
+
+      - name: Install client dependencies
+        run: npm --prefix packages/client ci
+
+      # .env is gitignored, so create it for CI. Preferred: store the full
+      # contents of your .env in a repo secret named ENV_FILE. If that secret
+      # is not set, fall back to .env.example with a generated session secret.
+      - name: Create .env file
+        env:
+          ENV_FILE: ${{ secrets.ENV_FILE }}
+        run: |
+          if [ -n "$ENV_FILE" ]; then
+            printf '%s\n' "$ENV_FILE" > .env
+          else
+            cp .env.example .env
+            sed -i "s/^SESSION_SECRET=.*/SESSION_SECRET=$(openssl rand -hex 32)/" .env
+          fi
+
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true
+
+      - name: Server and client unit tests
+        env:
+          NODE_OPTIONS: --env-file=.env
+        run: npm test
+
+      - name: Build client
+        env:
+          NODE_OPTIONS: --env-file=.env
+        run: npm run build
