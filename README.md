@@ -1,5 +1,7 @@
 # csc-3100 project ![CI](https://github.com/seal-team-5/scheduling-project/actions/workflows/ci-testing.yml/badge.svg)
 
+**DEPLOYED AT: https://recipe-me-one.vercel.app/grocery-list**
+
 # RecipeMe
 
 RecipeMe: a user puts in their meal preferences (could be dietary restrictions, cuisine type, dietary goals, time commitment, taste profile, specific food preferences, budget, store preferences, expertise, appliances, themed-food, serving size, amount of pots used)
