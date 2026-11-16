@@ -1,0 +1,7 @@
+#!/bin/sh
+# Rebuild the Vercel API bundle when server code is part of the commit.
+if git diff --cached --name-only | grep -qE '^(packages/server|packages/shared|vercel)/'; then
+  echo "Server code changed, rebuilding api/index.js..."
+  npm run build:api || exit 1
+  git add api/index.js
+fi
