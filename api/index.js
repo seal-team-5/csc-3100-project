@@ -1,36 +1,40 @@
-import mongoose from 'mongoose';
-import MongoStore from 'connect-mongo';
-import connectDB from '../packages/server/database.ts';
-import User from '../packages/server/userSchema.ts';
-import Recipe from '../packages/server/recipeSchema.ts';
-import { createApp } from '../packages/server/app.js';
-
 let appPromise;
 
-function getApp() {
-  appPromise ??= (async () => {
-    await connectDB();
-    await User.init();
-    const app = createApp({
-      User,
-      Recipe,
-      sessionStore: MongoStore.create({
-        client: mongoose.connection.getClient(),
-      }),
-      sessionSecret: process.env.SESSION_SECRET,
-      appOrigin: process.env.APP_ORIGIN,
-      production: true,
-    });
-    app.set('trust proxy', 1);
-    return app;
-  })().catch((error) => {
-    appPromise = undefined; // retry on the next request
-    throw error;
+async function buildApp() {
+  const { default: mongoose } = await import('mongoose');
+  const { default: MongoStore } = await import('connect-mongo');
+  const { default: connectDB } = await import('../packages/server/database.ts');
+  const { default: User } = await import('../packages/server/userSchema.ts');
+  const { default: Recipe } =
+    await import('../packages/server/recipeSchema.ts');
+  const { createApp } = await import('../packages/server/app.js');
+
+  await connectDB();
+  await User.init();
+  const app = createApp({
+    User,
+    Recipe,
+    sessionStore: MongoStore.create({
+      client: mongoose.connection.getClient(),
+    }),
+    sessionSecret: process.env.SESSION_SECRET,
+    appOrigin: process.env.APP_ORIGIN,
+    production: true,
   });
-  return appPromise;
+  app.set('trust proxy', 1);
+  return app;
 }
 
 export default async function handler(req, res) {
-  const app = await getApp();
-  return app(req, res);
+  try {
+    appPromise ??= buildApp();
+    const app = await appPromise;
+    return app(req, res);
+  } catch (error) {
+    appPromise = undefined;
+    console.error('API startup failed:', error);
+    res.statusCode = 500;
+    res.setHeader('Content-Type', 'text/plain');
+    res.end(`${error.name}: ${error.message}`);
+  }
 }
