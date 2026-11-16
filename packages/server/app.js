@@ -739,9 +739,7 @@ function validList(value) {
     value.length <= 30 &&
     value.every(
       (item) =>
-        typeof item === 'string' &&
-        item.trim().length > 0 &&
-        item.length <= 60
+        typeof item === 'string' && item.trim().length > 0 && item.length <= 60
     )
   );
 }
@@ -773,9 +771,7 @@ function publicSettings(user) {
 
     preferredFilters: normalizeRecipeFilters(s.preferredFilters),
 
-    ...Object.fromEntries(
-      LIST_FIELDS.map((key) => [key, [...(s[key] || [])]])
-    ),
+    ...Object.fromEntries(LIST_FIELDS.map((key) => [key, [...(s[key] || [])]])),
 
     notifications: Object.fromEntries(
       NOTIFICATION_KEYS.map((key) => [

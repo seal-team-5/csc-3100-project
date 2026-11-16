@@ -1,4 +1,3 @@
-
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
 import Recipe from '../recipeSchema.ts';
@@ -59,4 +58,3 @@ describe('Recipe in-memory tests', () => {
     await expect(recipe.save()).rejects.toThrow();
   });
 });
-

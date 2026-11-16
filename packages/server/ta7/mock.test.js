@@ -26,10 +26,7 @@ describe('TA 7 mock database tests', () => {
   });
 
   test('mocks finding recipes by name', async () => {
-    const mockRecipes = [
-      { Name: 'Pasta' },
-      { Name: 'Soup' },
-    ];
+    const mockRecipes = [{ Name: 'Pasta' }, { Name: 'Soup' }];
 
     const mockPasta = { Name: 'Pasta' };
 
@@ -53,17 +50,17 @@ describe('TA 7 mock database tests', () => {
       username: 'testuser',
       email: 'test@example.com',
     };
-  
+
     jest.spyOn(User, 'create').mockResolvedValue(mockUser);
     jest.spyOn(User, 'findById').mockResolvedValue(mockUser);
-  
+
     const created = await User.create({
       username: 'testuser',
       email: 'test@example.com',
     });
-  
+
     const found = await User.findById('user123');
-  
+
     expect(created.username).toBe('testuser');
     expect(found.email).toBe('test@example.com');
     expect(User.create).toHaveBeenCalledTimes(1);
@@ -86,38 +83,37 @@ describe('TA 7 mock database tests', () => {
   });
   test('mocks recipe summary queries', async () => {
     const mockRecipes = [{ Name: 'Pasta', Image: 'pasta.jpg' }];
-  
+
     const query = {
       select: jest.fn().mockReturnThis(),
       lean: jest.fn().mockResolvedValue(mockRecipes),
     };
-  
+
     jest.spyOn(Recipe, 'find').mockReturnValue(query);
-  
+
     const result = await Recipe.find().select('Name Image').lean();
-  
+
     expect(result).toHaveLength(1);
     expect(query.select).toHaveBeenCalledWith('Name Image');
     expect(query.lean).toHaveBeenCalled();
   });
 
   test('mocks finding recipes by a list of names', async () => {
-    const mockRecipes = [
-      { Name: 'Pasta' },
-      { Name: 'Soup' },
-    ];
-  
+    const mockRecipes = [{ Name: 'Pasta' }, { Name: 'Soup' }];
+
     const query = {
       select: jest.fn().mockReturnThis(),
       lean: jest.fn().mockResolvedValue(mockRecipes),
     };
-  
+
     jest.spyOn(Recipe, 'find').mockReturnValue(query);
-  
+
     const result = await Recipe.find({
       Name: { $in: ['Pasta', 'Soup'] },
-    }).select('_id Name').lean();
-  
+    })
+      .select('_id Name')
+      .lean();
+
     expect(result).toHaveLength(2);
     expect(Recipe.find).toHaveBeenCalledWith({
       Name: { $in: ['Pasta', 'Soup'] },
@@ -128,16 +124,16 @@ describe('TA 7 mock database tests', () => {
       Name: 'Pasta',
       Reviews: [],
     });
-  
+
     jest.spyOn(recipe, 'save').mockResolvedValue(recipe);
-  
+
     recipe.Reviews.push({
       rating: 5,
       note: 'Amazing!',
     });
-  
+
     await recipe.save();
-  
+
     expect(recipe.save).toHaveBeenCalledTimes(1);
   });
   test('mocks saving user favorites', async () => {
@@ -147,13 +143,13 @@ describe('TA 7 mock database tests', () => {
       password: 'mock-password',
       favorites: [],
     });
-  
+
     jest.spyOn(user, 'save').mockResolvedValue(user);
-  
+
     user.favorites.push('recipe123');
-  
+
     await user.save();
-  
+
     expect(user.save).toHaveBeenCalledTimes(1);
     expect(user.favorites).toContain('recipe123');
   });
@@ -168,7 +164,7 @@ describe('TA 7 mock database tests', () => {
         },
       },
     ];
-  
+
     const query = {
       select: jest.fn().mockReturnThis(),
       populate: jest.fn().mockReturnThis(),
@@ -176,19 +172,16 @@ describe('TA 7 mock database tests', () => {
         Reviews: mockReviews,
       }),
     };
-  
+
     jest.spyOn(Recipe, 'findById').mockReturnValue(query);
-  
+
     const result = await Recipe.findById('recipe123')
       .select('Reviews')
       .populate('Reviews.userId', 'username')
       .lean();
-  
+
     expect(result.Reviews[0].userId.username).toBe('testuser');
-    expect(query.populate).toHaveBeenCalledWith(
-      'Reviews.userId',
-      'username'
-    );
+    expect(query.populate).toHaveBeenCalledWith('Reviews.userId', 'username');
   });
 
   test('mocks keeping newest generated recipes first', async () => {
@@ -196,27 +189,24 @@ describe('TA 7 mock database tests', () => {
       acknowledged: true,
       modifiedCount: 1,
     };
-  
+
     jest.spyOn(User, 'updateOne').mockResolvedValue(mockResult);
-  
+
     const result = await User.updateOne(
       { _id: 'user123' },
       {
         $push: {
           generatedRecipes: {
-            $each: [
-              { recipeName: 'New Pasta' },
-              { recipeName: 'New Soup' },
-            ],
+            $each: [{ recipeName: 'New Pasta' }, { recipeName: 'New Soup' }],
             $position: 0,
             $slice: 100,
           },
         },
       }
     );
-  
+
     expect(result.modifiedCount).toBe(1);
-  
+
     const update = User.updateOne.mock.calls[0][1];
     expect(update.$push.generatedRecipes.$position).toBe(0);
     expect(update.$push.generatedRecipes.$slice).toBe(100);
@@ -228,19 +218,18 @@ describe('TA 7 mock database tests', () => {
       email: 'test@example.com',
       password: '$2b$12$mockhash',
     };
-  
+
     const query = {
       select: jest.fn().mockResolvedValue(mockUser),
     };
-  
+
     jest.spyOn(User, 'findOne').mockReturnValue(query);
-  
+
     const result = await User.findOne({
       email: 'test@example.com',
     }).select('+password');
-  
+
     expect(result.password).toBe(mockUser.password);
     expect(query.select).toHaveBeenCalledWith('+password');
   });
-
 });

@@ -9,6 +9,15 @@ import RecipeModel from '../recipeSchema.ts';
 import { hashPassword } from '../password.js';
 import { createApp } from '../app.js';
 
+// Error code 26 means the collection is already gone, which is fine here.
+async function dropCollectionIfExists(connection, name) {
+  try {
+    await connection.dropCollection(name);
+  } catch (error) {
+    if (error.code !== 26) throw error;
+  }
+}
+
 test('MongoDB reviews survive backend restart, update without duplication, and open from History', async () => {
   const uri = process.env.MONGO_URI || process.env.MONGODB_URL;
   assert.ok(uri, 'Set MONGO_URI or MONGODB_URL to run this integration test.');
@@ -232,11 +241,7 @@ test('MongoDB reviews survive backend restart, update without duplication, and o
         assert.ok(
           /^codex_review_check_(users|recipes)_[a-f0-9]{16}$/.test(name)
         );
-        try {
-          await connection.dropCollection(name);
-        } catch (error) {
-          if (error.code !== 26) throw error;
-        }
+        await dropCollectionIfExists(connection, name);
       }
     } finally {
       await connection.close();

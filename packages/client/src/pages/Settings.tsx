@@ -354,7 +354,6 @@ export default function Settings() {
               />
             </div>
           ))}
-
         </section>
 
         <hr />

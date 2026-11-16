@@ -33,7 +33,7 @@ export function configureServer({
         "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' https:; object-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'",
     });
     if (production) res.set('Strict-Transport-Security', 'max-age=31536000');
-    next();
+    return next();
   });
   app.use('/api', (req, res, next) => {
     res.set('Cache-Control', 'no-store');
@@ -44,7 +44,7 @@ export function configureServer({
     ) {
       return res.status(403).json({ error: 'Request origin is not allowed.' });
     }
-    next();
+    return next();
   });
   const parseJson = express.json({ limit: '8kb' });
   const parseRecipeJson = express.json({ limit: '64kb' });
@@ -100,7 +100,7 @@ export function finishServer(app, { clientDirectory = publicDirectory } = {}) {
       res.sendFile('index.html', { root: clientDirectory });
     }
   );
-  app.use((error, req, res, next) => {
+  app.use((error, req, res, _next) => {
     if (error.type === 'entity.parse.failed')
       return res.status(400).json({ error: 'Invalid JSON.' });
     if (error.type === 'entity.too.large')

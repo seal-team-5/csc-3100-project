@@ -1,5 +1,3 @@
-
-
 import { useEffect, useState } from 'react';
 
 type RecipeProgress = {
@@ -175,10 +173,7 @@ export default function GroceryList() {
                       const isChecked = checked.includes(id);
 
                       return (
-                        <li
-                          className="grocery-item"
-                          key={id}
-                        >
+                        <li className="grocery-item" key={id}>
                           <label className={isChecked ? 'checked' : ''}>
                             <input
                               type="checkbox"

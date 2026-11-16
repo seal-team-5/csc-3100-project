@@ -1,4 +1,3 @@
-
 import 'dotenv/config';
 
 import mongoose from 'mongoose';
@@ -29,4 +28,3 @@ export default async function connectDB() {
     throw error;
   }
 }
-

@@ -24,13 +24,13 @@ describe('TA 7 in-memory database tests', () => {
 
   test('creates and retrieves a recipe', async () => {
     const recipe = await Recipe.create({
-        Image: 'test-pasta.jpg',
-        Name: 'Test Pasta',
-        Ingredients: ['pasta', 'tomatoes'],
-        Instructions: ['Boil pasta', 'Add sauce'],
-        Filters: [],
-        Reviews: [],
-      });
+      Image: 'test-pasta.jpg',
+      Name: 'Test Pasta',
+      Ingredients: ['pasta', 'tomatoes'],
+      Instructions: ['Boil pasta', 'Add sauce'],
+      Filters: [],
+      Reviews: [],
+    });
 
     const found = await Recipe.findById(recipe._id);
 
@@ -83,17 +83,17 @@ describe('TA 7 in-memory database tests', () => {
 
   test('finds a user by email', async () => {
     const hashedPassword = await bcrypt.hash('password123', 12);
-  
+
     await User.create({
       username: 'loginuser',
       email: 'login@example.com',
       password: hashedPassword,
     });
-  
+
     const found = await User.findOne({
       email: 'login@example.com',
     }).select('+password');
-  
+
     expect(found).not.toBeNull();
     expect(found.username).toBe('loginuser');
     expect(found.password).toBe(hashedPassword);
@@ -101,32 +101,32 @@ describe('TA 7 in-memory database tests', () => {
 
   test('updates a user favorites list', async () => {
     const hashedPassword = await bcrypt.hash('password123', 12);
-  
+
     const user = await User.create({
       username: 'favoriteuser',
       email: 'favorites@example.com',
       password: hashedPassword,
       favorites: [],
     });
-  
+
     user.favorites.push('recipe123');
-  
+
     await user.save();
-  
+
     const updatedUser = await User.findById(user._id);
-  
+
     expect(updatedUser.favorites).toContain('recipe123');
   });
 
   test('adds a review to a recipe', async () => {
     const hashedPassword = await bcrypt.hash('password123', 12);
-  
+
     const user = await User.create({
       username: 'reviewuser',
       email: 'review@example.com',
       password: hashedPassword,
     });
-  
+
     const recipe = await Recipe.create({
       Image: 'pasta.jpg',
       Name: 'Review Pasta',
@@ -135,18 +135,18 @@ describe('TA 7 in-memory database tests', () => {
       Filters: [],
       Reviews: [],
     });
-  
+
     recipe.Reviews.push({
       userId: user._id,
       rating: 5,
       note: 'Really delicious!',
       createdAt: new Date(),
     });
-  
+
     await recipe.save();
-  
+
     const updatedRecipe = await Recipe.findById(recipe._id);
-  
+
     expect(updatedRecipe.Reviews).toHaveLength(1);
     expect(updatedRecipe.Reviews[0].rating).toBe(5);
     expect(updatedRecipe.Reviews[0].note).toBe('Really delicious!');
@@ -154,14 +154,14 @@ describe('TA 7 in-memory database tests', () => {
 
   test('updates a user generated recipe history', async () => {
     const hashedPassword = await bcrypt.hash('password123', 12);
-  
+
     const user = await User.create({
       username: 'historyuser',
       email: 'history@example.com',
       password: hashedPassword,
       generatedRecipes: [],
     });
-  
+
     const recipe = await Recipe.create({
       Image: 'pasta.jpg',
       Name: 'History Pasta',
@@ -170,7 +170,7 @@ describe('TA 7 in-memory database tests', () => {
       Filters: [],
       Reviews: [],
     });
-  
+
     await User.updateOne(
       { _id: user._id },
       {
@@ -184,24 +184,25 @@ describe('TA 7 in-memory database tests', () => {
         },
       }
     );
-  
+
     const updatedUser = await User.findById(user._id);
-  
+
     expect(updatedUser.generatedRecipes).toHaveLength(1);
     expect(updatedUser.generatedRecipes[0].recipeName).toBe('History Pasta');
-    expect(updatedUser.generatedRecipes[0].recipeId.toString())
-      .toBe(recipe._id.toString());
+    expect(updatedUser.generatedRecipes[0].recipeId.toString()).toBe(
+      recipe._id.toString()
+    );
   });
 
   test('keeps newest generated recipes first', async () => {
     const hashedPassword = await bcrypt.hash('password123', 12);
-  
+
     const user = await User.create({
       username: 'historyorder',
       email: 'historyorder@example.com',
       password: hashedPassword,
     });
-  
+
     const firstRecipe = await Recipe.create({
       Image: 'first.jpg',
       Name: 'First Recipe',
@@ -210,7 +211,7 @@ describe('TA 7 in-memory database tests', () => {
       Filters: [],
       Reviews: [],
     });
-  
+
     const secondRecipe = await Recipe.create({
       Image: 'second.jpg',
       Name: 'Second Recipe',
@@ -219,7 +220,7 @@ describe('TA 7 in-memory database tests', () => {
       Filters: [],
       Reviews: [],
     });
-  
+
     await User.updateOne(
       { _id: user._id },
       {
@@ -243,12 +244,11 @@ describe('TA 7 in-memory database tests', () => {
         },
       }
     );
-  
+
     const updatedUser = await User.findById(user._id);
-  
+
     expect(updatedUser.generatedRecipes).toHaveLength(2);
-    expect(updatedUser.generatedRecipes[0].recipeName)
-      .toBe('First Recipe');
+    expect(updatedUser.generatedRecipes[0].recipeName).toBe('First Recipe');
   });
 
   test('retrieves recipe summaries with selected fields', async () => {
@@ -260,11 +260,9 @@ describe('TA 7 in-memory database tests', () => {
       Filters: [],
       Reviews: [],
     });
-  
-    const recipes = await Recipe.find()
-      .select('Name Image')
-      .lean();
-  
+
+    const recipes = await Recipe.find().select('Name Image').lean();
+
     expect(recipes).toHaveLength(1);
     expect(recipes[0].Name).toBe('Summary Pasta');
     expect(recipes[0].Image).toBe('pasta.jpg');
@@ -273,13 +271,13 @@ describe('TA 7 in-memory database tests', () => {
 
   test('populates the user information in recipe reviews', async () => {
     const hashedPassword = await bcrypt.hash('password123', 12);
-  
+
     const user = await User.create({
       username: 'reviewer',
       email: 'reviewer@example.com',
       password: hashedPassword,
     });
-  
+
     const recipe = await Recipe.create({
       Image: 'pasta.jpg',
       Name: 'Reviewed Pasta',
@@ -294,12 +292,12 @@ describe('TA 7 in-memory database tests', () => {
         },
       ],
     });
-  
+
     const result = await Recipe.findById(recipe._id)
       .select('Reviews')
       .populate('Reviews.userId', 'username')
       .lean();
-  
+
     expect(result.Reviews).toHaveLength(1);
     expect(result.Reviews[0].userId.username).toBe('reviewer');
   });
@@ -313,7 +311,7 @@ describe('TA 7 in-memory database tests', () => {
       Filters: [],
       Reviews: [],
     });
-  
+
     await Recipe.create({
       Image: 'soup.jpg',
       Name: 'Soup',
@@ -322,7 +320,7 @@ describe('TA 7 in-memory database tests', () => {
       Filters: [],
       Reviews: [],
     });
-  
+
     await Recipe.create({
       Image: 'rice.jpg',
       Name: 'Rice',
@@ -331,20 +329,19 @@ describe('TA 7 in-memory database tests', () => {
       Filters: [],
       Reviews: [],
     });
-  
+
     const recipes = await Recipe.find({
       Name: { $in: ['Pasta', 'Soup'] },
     })
       .select('_id Name')
       .lean();
-  
+
     expect(recipes).toHaveLength(2);
-  
-    const names = recipes.map(recipe => recipe.Name);
-  
+
+    const names = recipes.map((recipe) => recipe.Name);
+
     expect(names).toContain('Pasta');
     expect(names).toContain('Soup');
     expect(names).not.toContain('Rice');
   });
-
 });
