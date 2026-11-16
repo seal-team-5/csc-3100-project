@@ -49,11 +49,7 @@ jobs:
         continue-on-error: true
 
       - name: Server and client unit tests
-        env:
-          NODE_OPTIONS: --env-file=.env
         run: npm test
 
       - name: Build client
-        env:
-          NODE_OPTIONS: --env-file=.env
         run: npm run build
