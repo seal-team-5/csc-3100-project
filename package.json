@@ -21,7 +21,7 @@
     "test": "node --test packages/server/*.test.js packages/client/src/lib/*.test.ts",
     "test:recipes": "node --env-file=.env --test packages/server/integration/recipes.test.js",
     "format": "npx prettier . --write",
-    "lint": "npx eslint .",
+    "lint": "npx eslint . && npx prettier --check .",
     "start": "node --env-file=.env packages/server/index.js",
     "dev": "node --watch --env-file=.env packages/server/index.js",
     "dev:demo": "node packages/server/demo.js",
