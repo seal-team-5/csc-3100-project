@@ -1,4 +1,4 @@
-# csc-3100 project
+# csc-3100 project ![CI](https://github.com/seal-team-5/scheduling-project/actions/workflows/ci-testing.yml/badge.svg)
 
 # RecipeMe
 
