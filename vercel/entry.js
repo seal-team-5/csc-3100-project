@@ -35,6 +35,6 @@ export default async function handler(req, res) {
     appPromise = undefined;
     console.error('API startup failed:', error);
     res.statusCode = 500;
-    res.end('Server failed to start.');
+    return res.end('Server failed to start.');
   }
 }
