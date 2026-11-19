@@ -3,6 +3,7 @@ import type { FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { RecipeFilter } from '../lib/recipes';
 import { FILTER_GROUPS } from '../../../shared/recipeFilters';
+import { ErrorState, LoadingState } from '../components/PageState';
 import './Settings.css';
 
 type UnitSystem = 'us' | 'metric';
@@ -84,6 +85,7 @@ export default function Settings() {
   const [loading, setLoading] = useState(true);
   const [loggedIn, setLoggedIn] = useState(true);
   const [loadError, setLoadError] = useState('');
+  const [attempt, setAttempt] = useState(0);
 
   const [email, setEmail] = useState('');
   const [username, setUsername] = useState('');
@@ -107,6 +109,8 @@ export default function Settings() {
   useEffect(() => {
     const controller = new AbortController();
     async function load() {
+      setLoading(true);
+      setLoadError('');
       try {
         const [settingsRes, recipesRes] = await Promise.all([
           fetch('/api/settings', { signal: controller.signal }),
@@ -145,7 +149,7 @@ export default function Settings() {
     }
     void load();
     return () => controller.abort();
-  }, []);
+  }, [attempt]);
 
   const isPreferred = (type: string, name: string) =>
     preferred.some((f) => f.type === type && f.name === name);
@@ -199,14 +203,26 @@ export default function Settings() {
   }
 
   async function handleSignOut() {
-    await fetch('/api/auth/logout', {
-      method: 'POST',
-      credentials: 'same-origin',
-    }).catch(() => {});
-    navigate('/login', { replace: true });
+    setError('');
+    try {
+      const response = await fetch('/api/auth/logout', {
+        method: 'POST',
+        credentials: 'same-origin',
+      });
+      if (!response.ok) throw new Error('Logout failed');
+      navigate('/login', { replace: true });
+    } catch {
+      setError('Unable to sign out. Please try again.');
+    }
   }
 
-  if (loading) return <p role="status">Loading settings…</p>;
+  if (loading)
+    return (
+      <section className="settings-page">
+        <h1>Settings</h1>
+        <LoadingState label="Loading settings…" />
+      </section>
+    );
   if (!loggedIn)
     return (
       <section className="settings-page">
@@ -220,7 +236,10 @@ export default function Settings() {
     return (
       <section className="settings-page">
         <h1>Settings</h1>
-        <p role="alert">{loadError}</p>
+        <ErrorState
+          message={loadError}
+          onRetry={() => setAttempt((value) => value + 1)}
+        />
       </section>
     );
 
