@@ -11,6 +11,13 @@ import type {
 } from '../lib/recipes';
 import RecipeCard from '../components/RecipeCard';
 import RecipeDialog from '../components/RecipeDialog';
+import {
+  EmptyState,
+  EmptyStateLink,
+  ErrorState,
+  LoginPrompt,
+  RecipeGridSkeleton,
+} from '../components/PageState';
 
 type UserData = {
   favorites: string[];
@@ -23,15 +30,30 @@ export default function Favorites() {
     null
   );
   const [progress, setProgress] = useState<RecipeProgress[]>([]);
-  const [message, setMessage] = useState('Loading favorites...');
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [loggedOut, setLoggedOut] = useState(false);
+  const [attempt, setAttempt] = useState(0);
 
-  // Load the user's favorite recipes when the component mounts
+  // Load the user's favorite recipes on mount and whenever Retry is pressed
   useEffect(() => {
-    async function loadFavorites() {
-      try {
-        const userResponse = await fetch('/api/user');
-        const recipesResponse = await fetch('/api/recipes?view=summary');
+    const controller = new AbortController();
+    const { signal } = controller;
 
+    async function loadFavorites() {
+      setLoading(true);
+      setError('');
+      setLoggedOut(false);
+      try {
+        const [userResponse, recipesResponse] = await Promise.all([
+          fetch('/api/user', { signal }),
+          fetch('/api/recipes?view=summary', { signal }),
+        ]);
+
+        if (userResponse.status === 401) {
+          setLoggedOut(true);
+          return;
+        }
         if (!userResponse.ok || !recipesResponse.ok) {
           throw new Error('Could not load favorites.');
         }
@@ -40,24 +62,29 @@ export default function Favorites() {
         const recipeData: { recipes: RecipeSummary[] } =
           await recipesResponse.json();
 
+        if (signal.aborted) return;
         setFavoriteIds(userData.user.favorites);
         setRecipes(recipeData.recipes);
 
         // Progress is optional: it only decides which progress button to show.
-        const progressResponse = await fetch('/api/recipe-progress');
+        const progressResponse = await fetch('/api/recipe-progress', {
+          signal,
+        });
         if (progressResponse.ok) {
           const progressData: { recipeProgress: RecipeProgress[] } =
             await progressResponse.json();
-          setProgress(progressData.recipeProgress);
+          if (!signal.aborted) setProgress(progressData.recipeProgress);
         }
-        setMessage('');
       } catch {
-        setMessage('Could not load favorite recipes.');
+        if (!signal.aborted) setError('Could not load your favorite recipes.');
+      } finally {
+        if (!signal.aborted) setLoading(false);
       }
     }
 
     void loadFavorites();
-  }, []);
+    return () => controller.abort();
+  }, [attempt]);
 
   // Filter the recipes to only include those that are in the user's favorites
   const favoriteRecipes = recipes.filter((recipe) =>
@@ -77,21 +104,36 @@ export default function Favorites() {
     <section className="favorites-page">
       <h1>Favorite Recipes</h1>
 
-      {message && <p>{message}</p>}
+      {loading && <RecipeGridSkeleton label="Loading favorites…" />}
 
-      {!message && favoriteRecipes.length === 0 && (
-        <p>You have not saved any recipes yet.</p>
+      {!loading && loggedOut && (
+        <LoginPrompt message="Log in to see the recipes you have saved." />
       )}
 
-      <div className="recipe-grid">
-        {favoriteRecipes.map((recipe) => (
-          <RecipeCard
-            key={recipe.id}
-            recipe={recipe}
-            onOpen={setSelectedRecipe}
-          />
-        ))}
-      </div>
+      {!loading && error && (
+        <ErrorState message={error} onRetry={() => setAttempt((n) => n + 1)} />
+      )}
+
+      {!loading && !error && !loggedOut && favoriteRecipes.length === 0 && (
+        <EmptyState
+          title="No favorites yet"
+          message="Tap Favorite on any recipe and it will show up here."
+        >
+          <EmptyStateLink to="/">Find a recipe</EmptyStateLink>
+        </EmptyState>
+      )}
+
+      {!loading && !error && !loggedOut && (
+        <div className="recipe-grid">
+          {favoriteRecipes.map((recipe) => (
+            <RecipeCard
+              key={recipe.id}
+              recipe={recipe}
+              onOpen={setSelectedRecipe}
+            />
+          ))}
+        </div>
+      )}
 
       {dialogResult && (
         <RecipeDialog
