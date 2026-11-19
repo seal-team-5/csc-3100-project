@@ -66,6 +66,41 @@ data fallback. An empty collection shows an empty state, and a failed request
 shows a retry option. Exact matches and closest matches use the loaded database
 records. Reload the page to pick up later database changes.
 
+### Google login (optional)
+
+The login page has a "Continue with Google" link. It uses a server-side OAuth
+flow, so no Google script is loaded in the browser and the Content-Security-Policy
+is unchanged. If the two variables below are not set, the link sends the user back
+to the login page with a "not set up" message.
+
+1. In [Google Cloud Console](https://console.cloud.google.com), create a project
+   and configure the OAuth consent screen (audience: External). While the app is
+   in Testing, add every account that should sign in under Test users.
+2. Go to APIs & Services, Credentials, Create Credentials, OAuth client ID, and
+   choose the type **Web application**.
+3. Leave **Authorized JavaScript origins** empty. Under **Authorized redirect
+   URIs**, add `<APP_ORIGIN>/api/auth/google/callback` for each environment, for
+   example:
+   - `http://127.0.0.1:5173/api/auth/google/callback` (local)
+   - `https://recipe-me-one.vercel.app/api/auth/google/callback` (production)
+4. Copy the client ID and secret into `.env` (and into Vercel, see below), then
+   restart the server:
+
+```env
+GOOGLE_CLIENT_ID=<client-id>.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=<client-secret>
+```
+
+The redirect URI must match `APP_ORIGIN` exactly, including `http` vs `https`.
+Locally, open the app at `http://127.0.0.1:5173` (not `localhost`).
+
+How it works: `GET /api/auth/google` redirects to Google (with PKCE, `state`, and
+`nonce`, stored in a short-lived signed cookie). Google redirects back to
+`GET /api/auth/google/callback`, where the server exchanges the code for an ID
+token, checks it, and signs the user in with the normal session cookie. A user is
+matched by Google ID first, then by verified email (linking an existing account),
+and otherwise a new account without a password is created.
+
 `GET /api/user` returns the currently signed-in user’s public account data,
 including their saved favorite recipe IDs. Requests require an active session;
 users who are not signed in receive an unauthorized response.
@@ -99,11 +134,13 @@ Vercel reaches through the `/api/*` rewrite in `vercel.json`.
 Set these environment variables in Vercel (Settings, Environment Variables,
 Production), then redeploy:
 
-| Variable         | Value                                                           |
-| ---------------- | --------------------------------------------------------------- |
-| `MONGO_URI`      | MongoDB Atlas connection string, including the database name    |
-| `SESSION_SECRET` | Random secret, at least 32 bytes                                |
-| `APP_ORIGIN`     | Exact production URL, for example `https://your-app.vercel.app` |
+| Variable               | Value                                                           |
+| ---------------------- | --------------------------------------------------------------- |
+| `MONGO_URI`            | MongoDB Atlas connection string, including the database name    |
+| `SESSION_SECRET`       | Random secret, at least 32 bytes                                |
+| `APP_ORIGIN`           | Exact production URL, for example `https://your-app.vercel.app` |
+| `GOOGLE_CLIENT_ID`     | Optional. Google OAuth client ID (enables Google login)         |
+| `GOOGLE_CLIENT_SECRET` | Optional. Google OAuth client secret                            |
 
 In MongoDB Atlas, open Network Access and allow `0.0.0.0/0`, because Vercel
 uses changing IP addresses. Leave Root Directory empty in the Vercel project
