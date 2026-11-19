@@ -5,6 +5,7 @@ import {
   PREGNANCY_FILTER,
 } from '../shared/recipeFilters.ts';
 import { hashPassword, validPassword, BCRYPT_ROUNDS } from './password.js';
+import { registerGoogleAuth } from './googleAuth.js';
 import {
   configureServer,
   finishServer,
@@ -686,6 +687,17 @@ export function createApp(options) {
       settings: publicSettings(user),
       username: user.username,
     });
+  });
+
+  // Google sign-in. Does nothing useful unless the client ID and secret are set.
+  registerGoogleAuth(app, {
+    User,
+    clientId: options.googleClientId,
+    clientSecret: options.googleClientSecret,
+    appOrigin: options.appOrigin,
+    sessionSecret: options.sessionSecret,
+    production,
+    fetchImpl: options.fetchImpl,
   });
 
   return finishServer(app, options);

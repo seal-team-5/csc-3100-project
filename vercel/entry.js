@@ -19,6 +19,8 @@ async function buildApp() {
     sessionSecret: process.env.SESSION_SECRET,
     appOrigin: process.env.APP_ORIGIN,
     production: true,
+    googleClientId: process.env.GOOGLE_CLIENT_ID,
+    googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
   });
   app.set('trust proxy', 1);
   return app;

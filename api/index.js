@@ -40,9 +40,14 @@ var userSchema = new Schema(
       unique: true,
       maxlength: 254
     },
+    // Set for accounts that signed in with Google.
+    googleId: { type: String, unique: true, sparse: true },
     password: {
       type: String,
-      required: true,
+      // Google-only accounts have no password.
+      required: function() {
+        return !this.googleId;
+      },
       select: false,
       // Routes hash passwords before saving; reject accidental plaintext writes.
       match: /^\$2[ab]\$12\$[./A-Za-z0-9]{53}$/
@@ -395,6 +400,173 @@ async function hashPassword(password) {
     );
   }
   return bcrypt.hash(password, BCRYPT_ROUNDS);
+}
+
+// packages/server/googleAuth.js
+import {
+  createHash,
+  createHmac,
+  randomBytes,
+  timingSafeEqual
+} from "node:crypto";
+var AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth";
+var TOKEN_URL = "https://oauth2.googleapis.com/token";
+var ISSUERS = ["https://accounts.google.com", "accounts.google.com"];
+var FLOW_COOKIE = "recipeme.oauth";
+var FLOW_MAX_AGE_MS = 10 * 60 * 1e3;
+var SESSION_MAX_AGE_MS = 8 * 60 * 60 * 1e3;
+var CALLBACK_PATH = "/api/auth/google/callback";
+function sign(secret, payload) {
+  return createHmac("sha256", secret).update(`google-oauth:${payload}`).digest("base64url");
+}
+function safeEqual(a, b) {
+  const left = Buffer.from(String(a));
+  const right = Buffer.from(String(b));
+  return left.length === right.length && timingSafeEqual(left, right);
+}
+function readCookie(req, name) {
+  for (const part of (req.headers.cookie || "").split(";")) {
+    const index = part.indexOf("=");
+    if (index > 0 && part.slice(0, index).trim() === name) {
+      return part.slice(index + 1).trim();
+    }
+  }
+  return void 0;
+}
+function readFlow(req, secret) {
+  const raw = readCookie(req, FLOW_COOKIE);
+  if (!raw) return null;
+  const [payload, signature] = raw.split(".");
+  if (!payload || !signature || !safeEqual(signature, sign(secret, payload))) {
+    return null;
+  }
+  try {
+    const flow = JSON.parse(Buffer.from(payload, "base64url").toString());
+    return flow.exp > Date.now() ? flow : null;
+  } catch {
+    return null;
+  }
+}
+function decodeIdToken(idToken) {
+  if (typeof idToken !== "string") return null;
+  try {
+    return JSON.parse(
+      Buffer.from(idToken.split(".")[1], "base64url").toString()
+    );
+  } catch {
+    return null;
+  }
+}
+function registerGoogleAuth(app, {
+  User,
+  clientId,
+  clientSecret,
+  appOrigin,
+  sessionSecret,
+  production = false,
+  fetchImpl = fetch
+}) {
+  const enabled = Boolean(clientId && clientSecret);
+  const redirectUri = new URL(CALLBACK_PATH, appOrigin).href;
+  const flowCookieOptions = {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: production,
+    path: "/api/auth/google"
+  };
+  app.get("/api/auth/google", (req, res) => {
+    if (!enabled) return res.redirect("/login?error=google_unavailable");
+    const state = randomBytes(16).toString("base64url");
+    const nonce = randomBytes(16).toString("base64url");
+    const verifier = randomBytes(32).toString("base64url");
+    const payload = Buffer.from(
+      JSON.stringify({
+        state,
+        nonce,
+        verifier,
+        exp: Date.now() + FLOW_MAX_AGE_MS
+      })
+    ).toString("base64url");
+    res.cookie(FLOW_COOKIE, `${payload}.${sign(sessionSecret, payload)}`, {
+      ...flowCookieOptions,
+      maxAge: FLOW_MAX_AGE_MS
+    });
+    const params = new URLSearchParams({
+      client_id: clientId,
+      redirect_uri: redirectUri,
+      response_type: "code",
+      scope: "openid email profile",
+      state,
+      nonce,
+      code_challenge: createHash("sha256").update(verifier).digest("base64url"),
+      code_challenge_method: "S256",
+      prompt: "select_account"
+    });
+    return res.redirect(`${AUTH_URL}?${params}`);
+  });
+  app.get(CALLBACK_PATH, async (req, res) => {
+    const fail = (code2) => {
+      res.clearCookie(FLOW_COOKIE, flowCookieOptions);
+      return res.redirect(`/login?error=${code2}`);
+    };
+    if (!enabled) return fail("google_unavailable");
+    const flow = readFlow(req, sessionSecret);
+    if (!flow) return fail("google_failed");
+    if (req.query.error) return fail("google_cancelled");
+    const { code, state } = req.query;
+    if (typeof code !== "string" || typeof state !== "string" || !safeEqual(state, flow.state)) {
+      return fail("google_failed");
+    }
+    try {
+      const tokenResponse = await fetchImpl(TOKEN_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          code,
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          grant_type: "authorization_code",
+          code_verifier: flow.verifier
+        }),
+        signal: AbortSignal.timeout(1e4)
+      });
+      if (!tokenResponse.ok) return fail("google_failed");
+      const claims = decodeIdToken((await tokenResponse.json()).id_token);
+      const email = typeof claims?.email === "string" ? claims.email.trim().toLowerCase() : "";
+      if (!claims || !ISSUERS.includes(claims.iss) || claims.aud !== clientId || !(claims.exp * 1e3 > Date.now()) || !safeEqual(claims.nonce ?? "", flow.nonce) || typeof claims.sub !== "string" || !claims.sub || !(claims.email_verified === true || claims.email_verified === "true") || !email || email.length > 254) {
+        return fail("google_failed");
+      }
+      let user = await User.findOne({ googleId: claims.sub });
+      if (!user) {
+        user = await User.findOne({ email });
+        if (user) {
+          user.googleId = claims.sub;
+          await user.save();
+        } else {
+          const name = typeof claims.name === "string" ? claims.name.trim() : "";
+          user = await User.create({
+            username: (name || email.split("@")[0]).slice(0, 80),
+            email,
+            googleId: claims.sub
+          });
+        }
+      }
+      await new Promise((resolve, reject) => {
+        req.session.regenerate((error) => error ? reject(error) : resolve());
+      });
+      req.session.userId = String(user._id);
+      req.session.cookie.maxAge = SESSION_MAX_AGE_MS;
+      await new Promise((resolve, reject) => {
+        req.session.save((error) => error ? reject(error) : resolve());
+      });
+      res.clearCookie(FLOW_COOKIE, flowCookieOptions);
+      return res.redirect("/");
+    } catch (error) {
+      console.error("Google sign-in failed:", error.name);
+      return fail("google_failed");
+    }
+  });
 }
 
 // packages/server/serverSetup.js
@@ -942,6 +1114,15 @@ function createApp(options) {
       username: user.username
     });
   });
+  registerGoogleAuth(app, {
+    User,
+    clientId: options.googleClientId,
+    clientSecret: options.googleClientSecret,
+    appOrigin: options.appOrigin,
+    sessionSecret: options.sessionSecret,
+    production,
+    fetchImpl: options.fetchImpl
+  });
   return finishServer(app, options);
 }
 function ratingSummary(reviews = []) {
@@ -1015,7 +1196,9 @@ async function buildApp() {
     }),
     sessionSecret: process.env.SESSION_SECRET,
     appOrigin: process.env.APP_ORIGIN,
-    production: true
+    production: true,
+    googleClientId: process.env.GOOGLE_CLIENT_ID,
+    googleClientSecret: process.env.GOOGLE_CLIENT_SECRET
   });
   app.set("trust proxy", 1);
   return app;
