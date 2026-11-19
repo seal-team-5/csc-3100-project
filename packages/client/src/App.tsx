@@ -13,6 +13,8 @@ import GroceryList from './pages/GroceryList';
 import Login from './pages/Login';
 import Favorites from './pages/Favorites';
 import Settings from './pages/Settings';
+import NotFound from './pages/NotFound';
+import ErrorBoundary from './components/ErrorBoundary';
 import './App.css';
 
 function Layout() {
@@ -59,7 +61,9 @@ function Layout() {
         </div>
       </nav>
       <main className="app-content">
-        <Outlet />
+        <ErrorBoundary key={location.pathname}>
+          <Outlet />
+        </ErrorBoundary>
       </main>
     </>
   );
@@ -76,6 +80,7 @@ function App() {
           <Route path="/favorites" element={<Favorites />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/login" element={<Login />} />
+          <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
     </BrowserRouter>

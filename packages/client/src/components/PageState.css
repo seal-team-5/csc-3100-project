@@ -1,0 +1,110 @@
+.state-box {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.state-box p {
+  margin: 0;
+}
+
+.state-title {
+  color: var(--recipe-ink);
+  font-weight: 600;
+}
+
+.state-loading {
+  flex-direction: row;
+  align-items: center;
+}
+
+.state-box.state-error {
+  border: 1px solid #f0c8c8;
+  color: #a42323;
+}
+
+.state-spinner {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--recipe-border);
+  border-top-color: var(--recipe-ink);
+  border-radius: 50%;
+  animation: state-spin 0.8s linear infinite;
+}
+
+@keyframes state-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.skeleton-card {
+  min-width: 0;
+  border: 1px solid var(--recipe-border);
+  border-radius: 16px;
+  background: white;
+  overflow: hidden;
+}
+
+.skeleton-block {
+  background: linear-gradient(90deg, #eef0f5 25%, #f7f8fa 50%, #eef0f5 75%);
+  background-size: 200% 100%;
+  animation: state-shimmer 1.4s ease-in-out infinite;
+}
+
+.skeleton-image {
+  height: 166px;
+}
+
+.skeleton-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px 15px 16px;
+}
+
+.skeleton-line {
+  height: 14px;
+  border-radius: 6px;
+}
+
+.skeleton-line.short {
+  width: 55%;
+}
+
+@keyframes state-shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+
+.state-visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  .skeleton-image {
+    height: 130px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .state-spinner,
+  .skeleton-block {
+    animation: none;
+  }
+}
+
+.state-box a.primary-button,
+.state-box a.secondary-button {
+  text-decoration: none;
+}

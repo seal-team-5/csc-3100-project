@@ -3,6 +3,13 @@ import RecipeReview from './RecipeReview';
 import RecipeCard from '../components/RecipeCard';
 import RecipeDialog from '../components/RecipeDialog';
 import type { RecipeSummary } from '../lib/recipes';
+import {
+  EmptyState,
+  EmptyStateLink,
+  ErrorState,
+  LoginPrompt,
+  RecipeGridSkeleton,
+} from '../components/PageState';
 
 type GeneratedRecipe = {
   recipeId: string;
@@ -34,6 +41,7 @@ export default function History() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [attempt, setAttempt] = useState(0);
+  const [loggedOut, setLoggedOut] = useState(false);
   const [today] = useState(() => new Date());
   const [selected, setSelected] = useState<{ id: string; name: string } | null>(
     null
@@ -52,13 +60,13 @@ export default function History() {
       }),
     ])
       .then(async ([response, summariesResponse]) => {
-        const result = await response.json();
+        if (response.status === 401) {
+          if (!controller.signal.aborted) setLoggedOut(true);
+          return;
+        }
+        const result = await response.json().catch(() => ({}));
         if (!response.ok)
-          throw new Error(
-            response.status === 401
-              ? 'Please log in to view your history.'
-              : result.error || 'Unable to load history.'
-          );
+          throw new Error(result.error || 'Unable to load history.');
         if (!summariesResponse.ok)
           throw new Error('Unable to load recipe cards. Please try again.');
         const summaries: { recipes: RecipeSummary[] } =
@@ -88,12 +96,11 @@ export default function History() {
       cache: 'no-store',
     })
       .then(async (response) => {
-        if (!response.ok)
-          throw new Error(
-            response.status === 401
-              ? 'Please log in to view generated recipes.'
-              : 'Unable to load generated recipes.'
-          );
+        if (response.status === 401) {
+          if (!controller.signal.aborted) setLoggedOut(true);
+          return;
+        }
+        if (!response.ok) throw new Error('Unable to load generated recipes.');
         const data = await response.json();
         if (!controller.signal.aborted) {
           setGenerated(data.generatedRecipes);
@@ -170,6 +177,19 @@ export default function History() {
     groups[group].push(entry);
   }
 
+  const completedCount = history.filter(
+    (item) => item.status === 'completed'
+  ).length;
+
+  // Guests get one sign-in prompt instead of two separate errors.
+  if (loggedOut)
+    return (
+      <section>
+        <h1>Recipe History</h1>
+        <LoginPrompt message="Log in to see the recipes you have completed and generated." />
+      </section>
+    );
+
   return (
     <section>
       <h1>Recipe History</h1>
@@ -190,29 +210,32 @@ export default function History() {
         />
       )}
       <h2>Completed recipes</h2>
-      {loading && <p role="status">Loading history…</p>}
-      {error && (
-        <div role="alert">
-          <p>{error}</p>
-          <button
-            type="button"
-            onClick={() => {
-              setLoading(true);
-              setAttempt((value) => value + 1);
-            }}
-          >
-            Retry history
-          </button>
-        </div>
+      {loading && <RecipeGridSkeleton label="Loading history…" count={3} />}
+      {!loading && error && (
+        <ErrorState
+          message={error}
+          onRetry={() => {
+            setLoading(true);
+            setAttempt((value) => value + 1);
+          }}
+          retryLabel="Retry history"
+        />
+      )}
+      {!loading && !error && completedCount === 0 && (
+        <EmptyState
+          title="No completed recipes yet"
+          message="Mark a recipe as Completed and it will appear here."
+        >
+          <EmptyStateLink to="/">Find a recipe</EmptyStateLink>
+        </EmptyState>
       )}
       {!loading &&
         !error &&
-        Object.entries(groups).map(([title, recipes]) => (
-          <section className="recipe-section" key={title}>
-            <h2>{title}</h2>
-            {recipes.length === 0 ? (
-              <p>No completed recipes.</p>
-            ) : (
+        Object.entries(groups)
+          .filter(([, recipes]) => recipes.length > 0)
+          .map(([title, recipes]) => (
+            <section className="recipe-section" key={title}>
+              <h2>{title}</h2>
               <div className="recipe-grid">
                 {recipes.map((item, index) => {
                   const recipe = item.recipeId
@@ -266,9 +289,8 @@ export default function History() {
                   );
                 })}
               </div>
-            )}
-          </section>
-        ))}
+            </section>
+          ))}
       {selected && (
         <section
           ref={reviewPanel}
@@ -298,20 +320,18 @@ export default function History() {
       >
         <h2 id="generated-recipes-heading">Previously generated recipes</h2>
         <p>Your latest 100 recipe suggestions, newest first.</p>
-        {generatedLoading && <p role="status">Loading generated recipes…</p>}
-        {generatedError && (
-          <div role="alert">
-            <p>{generatedError}</p>
-            <button
-              type="button"
-              onClick={() => {
-                setGeneratedLoading(true);
-                setAttempt((value) => value + 1);
-              }}
-            >
-              Retry generated recipes
-            </button>
-          </div>
+        {generatedLoading && (
+          <RecipeGridSkeleton label="Loading generated recipes…" count={3} />
+        )}
+        {!generatedLoading && generatedError && (
+          <ErrorState
+            message={generatedError}
+            onRetry={() => {
+              setGeneratedLoading(true);
+              setAttempt((value) => value + 1);
+            }}
+            retryLabel="Retry generated recipes"
+          />
         )}
         {!generatedLoading &&
           !generatedError &&
@@ -355,10 +375,12 @@ export default function History() {
               )}
             </>
           ) : (
-            <p>
-              No generated recipes yet. Choose “Show me a recipe!” on Home to
-              get started.
-            </p>
+            <EmptyState
+              title="No generated recipes yet"
+              message="Choose “Show me a recipe!” on Home to get your first suggestion."
+            >
+              <EmptyStateLink to="/">Go to Home</EmptyStateLink>
+            </EmptyState>
           ))}
       </section>
     </section>

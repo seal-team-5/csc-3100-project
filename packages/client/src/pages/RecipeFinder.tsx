@@ -3,6 +3,11 @@ import RecipeCard from '../components/RecipeCard';
 import CreateRecipeDialog from '../components/CreateRecipeDialog';
 import RecipeDialog from '../components/RecipeDialog';
 import Pagination from '../components/Pagination';
+import {
+  EmptyState,
+  ErrorState,
+  RecipeGridSkeleton,
+} from '../components/PageState';
 import { FILTER_GROUPS, PREGNANCY_FILTER } from '../../../shared/recipeFilters';
 import { compareByRating, getRecipeResult, resultFor } from '../lib/recipes';
 import type {
@@ -51,16 +56,23 @@ export default function RecipeFinder({ username }: { username?: string }) {
   const [creationMessage, setCreationMessage] = useState('');
 
   useEffect(() => {
+    const controller = new AbortController();
     async function loadFavoriteIds() {
-      const response = await fetch('/api/user');
-
-      if (!response.ok) return;
-
-      const data = await response.json();
-      setFavoriteIds(data.user.favorites || []);
+      try {
+        const response = await fetch('/api/user', {
+          signal: controller.signal,
+        });
+        if (!response.ok) return; // guests have no favorites
+        const data = await response.json();
+        if (!controller.signal.aborted)
+          setFavoriteIds(data.user.favorites || []);
+      } catch {
+        /* Favorites are optional; the Favorite button reports its own errors. */
+      }
     }
 
     void loadFavoriteIds();
+    return () => controller.abort();
   }, []);
 
   useEffect(() => {
@@ -321,22 +333,13 @@ export default function RecipeFinder({ username }: { username?: string }) {
           )}
         </div>
       </section>
-      {loading && (
-        <p role="status" className="recipe-state">
-          Loading recipes…
-        </p>
-      )}
-      {error && (
-        <div role="alert" className="recipe-state">
-          <p>{error}</p>
-          <button
-            className="secondary-button"
-            onClick={() => setReload((value) => value + 1)}
-            type="button"
-          >
-            Retry
-          </button>
-        </div>
+      {loading && <RecipeGridSkeleton label="Loading recipes…" count={8} />}
+      {!loading && error && (
+        <ErrorState
+          message={error}
+          onRetry={() => setReload((value) => value + 1)}
+          retryLabel="Retry"
+        />
       )}
       {!loading && !error && (
         <>
@@ -379,14 +382,30 @@ export default function RecipeFinder({ username }: { username?: string }) {
               </span>
             </div>
             {!recipes.length ? (
-              <p className="recipe-state">No recipes are available yet.</p>
+              <EmptyState
+                title="No recipes yet"
+                message="There are no recipes in the community collection yet. Be the first to add one!"
+              >
+                <button
+                  className="secondary-button"
+                  onClick={() => {
+                    setCreationMessage('');
+                    setCreatingRecipe(true);
+                  }}
+                  type="button"
+                >
+                  Add a recipe
+                </button>
+              </EmptyState>
             ) : !matches.length ? (
-              <div className="recipe-state">
-                <p>
-                  {pregnancySelected
+              <EmptyState
+                title="No matching recipes"
+                message={
+                  pregnancySelected
                     ? 'No recipes match these filters. Suggestions will keep Pregnancy selected and only use recipes carrying that tag.'
-                    : 'No recipes match every filter. Clear a filter to browse more, or choose “Show me a recipe” for the closest match.'}
-                </p>
+                    : 'No recipes match every filter. Clear a filter to browse more, or choose “Show me a recipe” for the closest match.'
+                }
+              >
                 <button
                   className="secondary-button"
                   onClick={() => {
@@ -397,7 +416,7 @@ export default function RecipeFinder({ username }: { username?: string }) {
                 >
                   Clear filters
                 </button>
-              </div>
+              </EmptyState>
             ) : (
               <>
                 <div className="recipe-grid">
