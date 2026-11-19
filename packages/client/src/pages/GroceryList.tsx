@@ -1,4 +1,11 @@
 import { useEffect, useState } from 'react';
+import {
+  EmptyState,
+  EmptyStateLink,
+  ErrorState,
+  LoadingState,
+  LoginPrompt,
+} from '../components/PageState';
 
 type RecipeProgress = {
   recipeName: string;
@@ -20,18 +27,25 @@ export default function GroceryList() {
   const [checked, setChecked] = useState<string[]>([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [loggedOut, setLoggedOut] = useState(false);
   const [reload, setReload] = useState(0);
 
   useEffect(() => {
     async function loadGroceryList() {
       setLoading(true);
       setError('');
+      setLoggedOut(false);
 
       try {
         const [progressResponse, recipesResponse] = await Promise.all([
           fetch('/api/recipe-progress'),
           fetch('/api/recipes'),
         ]);
+
+        if (progressResponse.status === 401) {
+          setLoggedOut(true);
+          return;
+        }
 
         if (!progressResponse.ok || !recipesResponse.ok) {
           throw new Error('Could not load your grocery list.');
@@ -107,26 +121,21 @@ export default function GroceryList() {
         <p>Everything you need for your in-progress recipes.</p>
       </div>
 
-      {loading && (
-        <p className="recipe-state" role="status">
-          Loading your grocery list…
-        </p>
+      {loading && <LoadingState label="Loading your grocery list…" />}
+
+      {!loading && loggedOut && (
+        <LoginPrompt message="Log in to see the grocery list for your in-progress recipes." />
       )}
 
-      {error && (
-        <div className="recipe-state" role="alert">
-          <p>{error}</p>
-          <button
-            className="secondary-button"
-            onClick={() => setReload((value) => value + 1)}
-            type="button"
-          >
-            Retry
-          </button>
-        </div>
+      {!loading && error && (
+        <ErrorState
+          message={error}
+          onRetry={() => setReload((value) => value + 1)}
+          retryLabel="Retry"
+        />
       )}
 
-      {!loading && !error && (
+      {!loading && !error && !loggedOut && (
         <section className="recipe-section" aria-labelledby="grocery-heading">
           <div className="recipe-section-heading">
             <h2 id="grocery-heading">Your Ingredients</h2>
@@ -136,10 +145,12 @@ export default function GroceryList() {
           </div>
 
           {recipeGroups.length === 0 ? (
-            <p className="recipe-state">
-              No ingredients yet. Mark a recipe as in progress to start your
-              grocery list!
-            </p>
+            <EmptyState
+              title="No ingredients yet"
+              message="Mark a recipe as In progress and its ingredients will show up here."
+            >
+              <EmptyStateLink to="/">Find a recipe</EmptyStateLink>
+            </EmptyState>
           ) : (
             <>
               <div className="grocery-progress">
