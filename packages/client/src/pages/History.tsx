@@ -1,3 +1,4 @@
+import { LOGIN_REQUIRED } from '../lib/auth';
 import { useEffect, useRef, useState } from 'react';
 import RecipeReview from './RecipeReview';
 import RecipeCard from '../components/RecipeCard';
@@ -56,7 +57,7 @@ export default function History() {
         if (!response.ok)
           throw new Error(
             response.status === 401
-              ? 'Please log in to view your history.'
+              ? LOGIN_REQUIRED
               : result.error || 'Unable to load history.'
           );
         if (!summariesResponse.ok)
@@ -91,7 +92,7 @@ export default function History() {
         if (!response.ok)
           throw new Error(
             response.status === 401
-              ? 'Please log in to view generated recipes.'
+              ? LOGIN_REQUIRED
               : 'Unable to load generated recipes.'
           );
         const data = await response.json();

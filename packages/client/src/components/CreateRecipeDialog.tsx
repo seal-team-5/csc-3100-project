@@ -1,3 +1,4 @@
+import { LOGIN_REQUIRED } from '../lib/auth';
 import { FILTER_GROUPS } from '../../../shared/recipeFilters';
 import { useEffect, useRef, useState } from 'react';
 import type { FormEvent } from 'react';
@@ -70,7 +71,11 @@ export default function CreateRecipeDialog({
       });
       const data = await response.json();
       if (!response.ok)
-        throw new Error(data.error || 'Unable to save your recipe.');
+        throw new Error(
+          response.status === 401
+            ? LOGIN_REQUIRED
+            : data.error || 'Unable to save your recipe.'
+        );
       onCreated(data.recipe);
     } catch (error) {
       setError(

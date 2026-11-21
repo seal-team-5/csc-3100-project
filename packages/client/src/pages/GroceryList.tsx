@@ -1,3 +1,4 @@
+import { LOGIN_REQUIRED } from '../lib/auth';
 import { useEffect, useState } from 'react';
 
 type RecipeProgress = {
@@ -33,6 +34,7 @@ export default function GroceryList() {
           fetch('/api/recipes'),
         ]);
 
+        if (progressResponse.status === 401) throw new Error(LOGIN_REQUIRED);
         if (!progressResponse.ok || !recipesResponse.ok) {
           throw new Error('Could not load your grocery list.');
         }
@@ -65,8 +67,12 @@ export default function GroceryList() {
 
         setRecipeGroups(groups);
         setChecked([]);
-      } catch {
-        setError('Could not load your grocery list. Please try again.');
+      } catch (error) {
+        setError(
+          error instanceof Error && error.message === LOGIN_REQUIRED
+            ? LOGIN_REQUIRED
+            : 'Could not load your grocery list. Please try again.'
+        );
       } finally {
         setLoading(false);
       }

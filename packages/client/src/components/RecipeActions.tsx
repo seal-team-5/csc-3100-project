@@ -1,3 +1,4 @@
+import { LOGIN_REQUIRED } from '../lib/auth';
 import { useState } from 'react';
 import type { RecipeProgress } from '../lib/recipes';
 
@@ -49,7 +50,7 @@ export default function RecipeActions({
       if (!response.ok)
         throw new Error(
           response.status === 401
-            ? 'Please log in to track recipe progress.'
+            ? LOGIN_REQUIRED
             : 'Could not update recipe progress. Please try again.'
         );
       const data: { recipeProgress: RecipeProgress[] } = await response.json();
@@ -84,8 +85,8 @@ export default function RecipeActions({
       });
       if (!response.ok)
         throw new Error(
-          response.status === 401 || response.status === 403
-            ? 'Please log in to save favorite recipes.'
+          response.status === 401
+            ? LOGIN_REQUIRED
             : 'Could not update favorites. Please try again.'
         );
       const data: { favorites: string[] } = await response.json();

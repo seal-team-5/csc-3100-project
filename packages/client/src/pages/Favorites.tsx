@@ -1,3 +1,4 @@
+import { LOGIN_REQUIRED } from '../lib/auth';
 /*
 tsx file for Favorites page, which displays the user's favorite 
 recipes and allows them to view recipe details in a dialog.
@@ -32,6 +33,7 @@ export default function Favorites() {
         const userResponse = await fetch('/api/user');
         const recipesResponse = await fetch('/api/recipes?view=summary');
 
+        if (userResponse.status === 401) throw new Error(LOGIN_REQUIRED);
         if (!userResponse.ok || !recipesResponse.ok) {
           throw new Error('Could not load favorites.');
         }
@@ -51,8 +53,12 @@ export default function Favorites() {
           setProgress(progressData.recipeProgress);
         }
         setMessage('');
-      } catch {
-        setMessage('Could not load favorite recipes.');
+      } catch (error) {
+        setMessage(
+          error instanceof Error && error.message === LOGIN_REQUIRED
+            ? LOGIN_REQUIRED
+            : 'Could not load favorite recipes.'
+        );
       }
     }
 

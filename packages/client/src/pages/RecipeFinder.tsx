@@ -1,3 +1,4 @@
+import { LOGIN_REQUIRED } from '../lib/auth';
 import { useEffect, useMemo, useState } from 'react';
 import RecipeCard from '../components/RecipeCard';
 import CreateRecipeDialog from '../components/CreateRecipeDialog';
@@ -191,7 +192,7 @@ export default function RecipeFinder({ username }: { username?: string }) {
     })
       .then((response) => {
         if (response.status === 401) {
-          setHistoryError('Sign in to save generated recipes to History.');
+          setHistoryError(LOGIN_REQUIRED);
         } else if (!response.ok) {
           setHistoryError('This recipe could not be saved to History.');
         }
