@@ -1,3 +1,4 @@
+import { LOGIN_REQUIRED } from '../lib/auth';
 import { useEffect, useId, useState } from 'react';
 import type { FormEvent } from 'react';
 import './RecipeReview.css';
@@ -96,7 +97,11 @@ export default function RecipeReview({
       );
       const result = await response.json();
       if (!response.ok)
-        throw new Error(result.error || 'Unable to save your review.');
+        throw new Error(
+          response.status === 401
+            ? LOGIN_REQUIRED
+            : result.error || 'Unable to save your review.'
+        );
       setMessage('Review saved.');
       setIsOpen(false);
       reloadReviews();
