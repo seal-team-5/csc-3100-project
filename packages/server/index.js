@@ -39,6 +39,8 @@ const app = createApp({
     process.env.APP_ORIGIN ||
     (production ? `https://localhost:${port}` : 'http://localhost:5173'),
   production,
+  googleClientId: process.env.GOOGLE_CLIENT_ID,
+  googleClientSecret: process.env.GOOGLE_CLIENT_SECRET,
 });
 // Set an explicit trusted proxy network only when your HTTPS deployment needs it.
 if (process.env.TRUST_PROXY) app.set('trust proxy', process.env.TRUST_PROXY);

@@ -22,7 +22,8 @@ export type SavedFilter = {
 export type User = {
   username: string;
   email: string;
-  password: string; /* bcrypt hash; never a plaintext password */
+  googleId?: string; /* set for accounts that signed in with Google */
+  password?: string; /* bcrypt hash; never a plaintext password. Absent for Google-only accounts. */
   favorites: string[]; /* array of recipe IDs */
   recipeProgress: RecipeProgress[];
   generatedRecipes: {
@@ -59,9 +60,14 @@ const userSchema = new Schema<User>(
       unique: true,
       maxlength: 254,
     },
+    // Set for accounts that signed in with Google.
+    googleId: { type: String, unique: true, sparse: true },
     password: {
       type: String,
-      required: true,
+      // Google-only accounts have no password.
+      required: function () {
+        return !(this as { googleId?: string }).googleId;
+      },
       select: false,
       // Routes hash passwords before saving; reject accidental plaintext writes.
       match: /^\$2[ab]\$12\$[./A-Za-z0-9]{53}$/,
