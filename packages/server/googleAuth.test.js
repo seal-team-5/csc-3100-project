@@ -148,21 +148,24 @@ test('callback creates a user, signs in, and a repeat login reuses it', async (t
   assert.equal(records.length, 1);
 });
 
-test('callback links an existing account with the same verified email', async (t) => {
+test('callback refuses to link an existing account with the same email', async (t) => {
   const { get, start, records } = await fixture(t);
-  records.push({
-    _id: 'existing',
-    email: 'cook@example.com',
-    username: 'Old',
-    save: async () => {},
-  });
+  records.push({ _id: 'existing', email: 'cook@example.com', username: 'Old' });
   const flow = await start();
-  await get(
+  const response = await get(
     `/api/auth/google/callback?code=abc&state=${flow.state}`,
     flow.cookie
   );
+  assert.equal(
+    response.headers.get('location'),
+    '/login?error=google_email_exists'
+  );
   assert.equal(records.length, 1);
-  assert.equal(records[0].googleId, 'google-sub-1');
+  assert.equal(records[0].googleId, undefined);
+  assert.equal(
+    response.headers.getSetCookie().some((c) => c.startsWith('recipeme.sid')),
+    false
+  );
 });
 
 test('callback rejects bad state, missing cookie, unverified email, wrong audience', async (t) => {

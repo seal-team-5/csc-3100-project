@@ -6,6 +6,8 @@ import './Login.css';
 const GOOGLE_ERRORS: Record<string, string> = {
   google_cancelled: 'Google sign-in was cancelled.',
   google_unavailable: 'Google sign-in is not set up on this server.',
+  google_email_exists:
+    'An account with this email already exists. Log in with your password instead.',
   google_failed: 'Google sign-in failed. Please try again.',
 };
 

@@ -98,8 +98,10 @@ How it works: `GET /api/auth/google` redirects to Google (with PKCE, `state`, an
 `nonce`, stored in a short-lived signed cookie). Google redirects back to
 `GET /api/auth/google/callback`, where the server exchanges the code for an ID
 token, checks it, and signs the user in with the normal session cookie. A user is
-matched by Google ID first, then by verified email (linking an existing account),
-and otherwise a new account without a password is created.
+matched by Google ID; otherwise a new account without a password is created. If an
+account with the same email already exists, Google sign-in is refused (the user is
+asked to log in with their password) because emails are not verified at
+registration, so accounts are never linked automatically.
 
 `GET /api/user` returns the currently signed-in user’s public account data,
 including their saved favorite recipe IDs. Requests require an active session;

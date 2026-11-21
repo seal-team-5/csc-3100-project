@@ -539,18 +539,13 @@ function registerGoogleAuth(app, {
       }
       let user = await User.findOne({ googleId: claims.sub });
       if (!user) {
-        user = await User.findOne({ email });
-        if (user) {
-          user.googleId = claims.sub;
-          await user.save();
-        } else {
-          const name = typeof claims.name === "string" ? claims.name.trim() : "";
-          user = await User.create({
-            username: (name || email.split("@")[0]).slice(0, 80),
-            email,
-            googleId: claims.sub
-          });
-        }
+        if (await User.findOne({ email })) return fail("google_email_exists");
+        const name = typeof claims.name === "string" ? claims.name.trim() : "";
+        user = await User.create({
+          username: (name || email.split("@")[0]).slice(0, 80),
+          email,
+          googleId: claims.sub
+        });
       }
       await new Promise((resolve, reject) => {
         req.session.regenerate((error) => error ? reject(error) : resolve());

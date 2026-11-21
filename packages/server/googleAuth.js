@@ -1,4 +1,6 @@
 // Google sign-in using the server-side OAuth 2.0 authorization-code flow
+// (with PKCE, state and nonce). No script from Google is loaded in the
+// browser, so the strict Content-Security-Policy does not need to change.
 import {
   createHash,
   createHmac,
@@ -36,7 +38,7 @@ function readCookie(req, name) {
   return undefined;
 }
 
-// NOTE: :) The flow cookie is separate from the session cookie because the session
+// The flow cookie is separate from the session cookie because the session
 // cookie is SameSite=Strict and the browser will not send it when Google
 // redirects back to us.
 function readFlow(req, secret) {
@@ -181,23 +183,19 @@ export function registerGoogleAuth(
         return fail('google_failed');
       }
 
-      // Find the account by Google ID, then by verified email (linking an
-      // existing password account), otherwise create a new one.
+      // Find the account by Google ID, otherwise create a new one. An existing
+      // account with the same email is never linked automatically: emails are
+      // not verified at registration, so linking could hand a pre-registered
+      // account to an attacker. CHANGED FOR SELKALAI'S RECCOMENDATION
       let user = await User.findOne({ googleId: claims.sub });
       if (!user) {
-        user = await User.findOne({ email });
-        if (user) {
-          user.googleId = claims.sub;
-          await user.save();
-        } else {
-          const name =
-            typeof claims.name === 'string' ? claims.name.trim() : '';
-          user = await User.create({
-            username: (name || email.split('@')[0]).slice(0, 80),
-            email,
-            googleId: claims.sub,
-          });
-        }
+        if (await User.findOne({ email })) return fail('google_email_exists');
+        const name = typeof claims.name === 'string' ? claims.name.trim() : '';
+        user = await User.create({
+          username: (name || email.split('@')[0]).slice(0, 80),
+          email,
+          googleId: claims.sub,
+        });
       }
 
       // Same session handling as the password login route.
